@@ -1,0 +1,28 @@
+# IDE directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# byte cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# coverage
+.coverage
+htmlcov/
+
+# dist
+/dist/
+*.egg-info/
