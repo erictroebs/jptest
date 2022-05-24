@@ -11,10 +11,10 @@ setup(
     description='write complex unit tests for Jupyter Notebooks in less lines of code',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    # url='https://github.com/pypa/sampleproject',
-    # project_urls={
-    #     'Bug Tracker': 'https://github.com/pypa/sampleproject/issues',
-    # },
+    url='https://github.com/erictroebs/jptest',
+    project_urls={
+        'Bug Tracker': 'https://github.com/erictroebs/jptest/issues',
+    },
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
