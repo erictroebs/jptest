@@ -1,6 +1,7 @@
 import functools
-from types import FunctionType
-from typing import List, Union, Tuple, Dict, Any
+from contextlib import ExitStack
+from types import FunctionType, GeneratorType
+from typing import List, Dict, Union, Tuple
 
 from testbook import testbook
 
@@ -19,77 +20,35 @@ EXECUTE_TYPE = Union[Tuple[str],
 
 
 class JPTest(testbook):
-    def __init__(self, nb: str, execute: EXECUTE_TYPE = None):
-        super().__init__(nb, execute)
-        self._jtb = JPTestBook(self.client)
+    NOTEBOOK = None
+    TESTS = []
 
-    def _prepare_recursive(self, item: EXECUTE_TYPE) -> List[Dict[str, Any]]:
-        extracted = []
+    def __init__(self, name: str = None, max_score: float = None, execute: EXECUTE_TYPE = None):
+        super().__init__(self.NOTEBOOK, execute)
+
+        self._jtb = JPTestBook(self.client)
+        self._name = name
+        self._max_score = max_score
+
+    def _prepare_recursive(self, item: EXECUTE_TYPE) -> List[JPTestParams]:
+        extracted: List[JPTestParams] = []
 
         if isinstance(item, dict):
-            # create function wrappers
-            wrappers = {}
+            with ExitStack() as stack:
+                # create function wrappers
+                if 'track' in item:
+                    for key in item['track']:
+                        if isinstance(item['track'][key], list):
+                            cm = self._jtb.track(key, *item['track'][key])
+                        else:
+                            cm = self._jtb.track(key, item['track'][key])
 
-            if 'track' in item:
-                for key in item['track']:
-                    class_name = self._jtb.random_id('Track')
-                    variable_name = self._jtb.random_id('track')
+                        stack.enter_context(cm)
+                        extracted.append(cm)
 
-                    wrappers[key] = self._jtb.inject(f'''
-                        class {class_name}:
-                            def __init__(self, fun):
-                                self._calls = []
-
-                                def patch(*args, **kwargs):
-                                    result = fun(*args, **kwargs)
-                                    self._calls.append((args, kwargs, result))
-
-                                    return result
-
-                                self.fun = fun
-                                self.patch = patch
-
-                            def extract_parameters(self, params):
-                                result = []
-                                for args, kwargs, _ in self._calls:
-                                    call_result = {{}}
-                                    result.append(call_result)
-
-                                    for name, pos in params:
-                                        if name in kwargs:
-                                            call_result[name] = kwargs[name]
-                                        elif pos < len(args):
-                                            call_result[name] = args[pos]
-
-                                return result
-
-                        {variable_name} = {class_name}({key})
-                        {key} = {variable_name}.patch
-                    ''', variable_name)
-
-            # execute cells
-            sub_extracted = self._prepare_recursive(item['cells'])
-
-            # extract parameters
-            for key, reference in wrappers.items():
-                parameters = item['track'][key]
-                if not isinstance(parameters, list):
-                    parameters = [parameters]
-
-                values = reference.extract_parameters(parameters)
-                params = JPTestParams(key, parameters, values)
-
-                extracted.append(params)
-
-            # add extracted parameters from sub-executions
-            for ep in sub_extracted:
-                extracted.append(ep)
-
-            # remove wrappers
-            for key, reference in reversed(wrappers.items()):
-                self._jtb.inject(f'''
-                    {key} = {reference.name}.fun
-                ''')
+                # execute cells
+                for ep in self._prepare_recursive(item['execute']):
+                    extracted.append(ep)
 
         elif isinstance(item, tuple):
             if len(item) == 2:
@@ -118,13 +77,32 @@ class JPTest(testbook):
     def __call__(self, func):
         @functools.wraps(func)
         def wrapper():
+            test_score = 0.0
+            test_comments = []
+
             with self.client.setup_kernel():
                 if self.execute is None:
                     tracked_parameters = []
                 else:
                     tracked_parameters = self._prepare_recursive(self.execute)
 
-                func(self._jtb, *tracked_parameters)
+                ret_val = func(self._jtb, *tracked_parameters)
+                if isinstance(ret_val, GeneratorType):
+                    for value in ret_val:
+                        if len(value) == 3:
+                            val, score, reason = value
+                        else:
+                            val, score = value
+                            reason = None
+
+                        if val:
+                            test_score += score
+                        elif reason is not None:
+                            test_comments.append(reason)
+
+            return test_score, test_comments
 
         wrapper.patchings = [self]
+
+        self.TESTS.append((self._name, func.__name__, self._max_score, wrapper))
         return wrapper

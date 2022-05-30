@@ -1,6 +1,9 @@
+from typing import Tuple
 from uuid import uuid4
 
 from testbook.client import TestbookNotebookClient
+
+from .JPTestParams import JPTestParams
 
 
 class JPTestBook:
@@ -26,3 +29,6 @@ class JPTestBook:
             return self.ref(name[0])
         if len(name) > 1:
             return tuple(self.ref(n) for n in name)
+
+    def track(self, fun_name: str, *parameters: Tuple[str, int]) -> JPTestParams:
+        return JPTestParams(self, fun_name, *parameters)
