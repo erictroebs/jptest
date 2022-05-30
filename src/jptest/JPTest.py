@@ -95,7 +95,9 @@ class JPTest(testbook):
                             val, score = value
                             reason = None
 
-                        if val:
+                        if isinstance(val, bool) and val:
+                            test_score += score
+                        elif isinstance(val, list) and all(list):
                             test_score += score
                         elif reason is not None:
                             test_comments.append(reason)
