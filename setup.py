@@ -5,10 +5,10 @@ with open('README.md', 'r', encoding='utf-8') as file:
 
 setup(
     name='jptest',
-    version='0.3.0',
+    version='0.4.0',
     author='Eric Tröbs',
     author_email='eric.troebs@tu-ilmenau.de',
-    description='write complex unit tests for Jupyter Notebooks in less lines of code',
+    description='write graded unit tests for Jupyter Notebooks in a few lines of code',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/erictroebs/jptest',

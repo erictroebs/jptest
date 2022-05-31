@@ -89,18 +89,24 @@ class JPTest(testbook):
                 ret_val = func(self._jtb, *tracked_parameters)
                 if isinstance(ret_val, GeneratorType):
                     for value in ret_val:
-                        if len(value) == 3:
-                            val, score, reason = value
-                        else:
+                        if len(value) == 2:
                             val, score = value
-                            reason = None
+                            pos_comment = None
+                            neg_comment = None
+                        elif len(value) == 3:
+                            val, score, neg_comment = value
+                            pos_comment = None
+                        elif len(value) == 4:
+                            val, score, neg_comment, pos_comment = value
+                        else:
+                            raise ValueError('invalid yield from test')
 
-                        if isinstance(val, bool) and val:
+                        if (isinstance(val, bool) and val) or (isinstance(val, list) and all(val)):
                             test_score += score
-                        elif isinstance(val, list) and all(list):
-                            test_score += score
-                        elif reason is not None:
-                            test_comments.append(reason)
+                            if pos_comment is not None:
+                                test_comments.append(pos_comment)
+                        elif neg_comment is not None:
+                            test_comments.append(neg_comment)
 
             return test_score, test_comments
 
