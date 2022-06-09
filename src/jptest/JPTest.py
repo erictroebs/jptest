@@ -23,12 +23,12 @@ class JPTest(testbook):
     NOTEBOOK = None
     TESTS = []
 
-    def __init__(self, name: str = None, max_score: float = None, execute: EXECUTE_TYPE = None):
+    def __init__(self, name: str = None, max_score: Union[float, int] = None, execute: EXECUTE_TYPE = None):
         super().__init__(self.NOTEBOOK, execute)
 
-        self._jtb = JPTestBook(self.client)
-        self._name = name
-        self._max_score = max_score
+        self._jtb: JPTestBook = JPTestBook(self.client)
+        self._name: str = name
+        self._max_score: float = float(max_score)
 
     def _prepare_recursive(self, item: EXECUTE_TYPE) -> List[JPTestParams]:
         extracted: List[JPTestParams] = []
