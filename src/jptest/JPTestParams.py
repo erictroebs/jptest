@@ -2,9 +2,11 @@ from typing import List, Dict, Any, Tuple
 
 from testbook.reference import TestbookObjectReference
 
+from . import JPTestBook
+
 
 class JPTestParams:
-    def __init__(self, tb, fun_name: str, *parameters: Tuple[str, int]):
+    def __init__(self, tb: JPTestBook, fun_name: str, *parameters: Tuple[str, int]):
         self._tb = tb
         self._fun_name = fun_name
         self._wrapper: TestbookObjectReference
