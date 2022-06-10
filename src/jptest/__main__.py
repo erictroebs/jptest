@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import importlib.util
 import json
 import sys

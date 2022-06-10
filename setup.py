@@ -5,7 +5,7 @@ with open('README.md', 'r', encoding='utf-8') as file:
 
 setup(
     name='jptest',
-    version='0.4.2',
+    version='0.5.0',
     author='Eric Tröbs',
     author_email='eric.troebs@tu-ilmenau.de',
     description='write graded unit tests for Jupyter Notebooks in a few lines of code',
@@ -25,10 +25,6 @@ setup(
     python_requires='>=3.6',
     install_requires=[
         'jupyter',
-        # 'pytest~=7.1.2',
         'testbook~=0.4.2'
-    ],
-    scripts = [
-        'bin/jptest'
     ]
 )
