@@ -77,6 +77,9 @@ class JPTestParams:
     def last_call(self) -> Dict[str, Any]:
         return self._values[-1]
 
+    def __len__(self) -> int:
+        return len(self.calls)
+
     def values(self, parameter_name: str) -> List[Any]:
         result = []
         for call in self.calls:

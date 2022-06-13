@@ -63,7 +63,7 @@ class JPTest(testbook):
             self.client.inject(item)
 
         elif isinstance(item, FunctionType):
-            item(self.client)
+            item(self)
 
         elif isinstance(item, list):
             for i in item:
