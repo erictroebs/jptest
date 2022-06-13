@@ -4,7 +4,7 @@ import sys
 from argparse import ArgumentParser
 from typing import Dict, Tuple, List
 
-from jptest import JPTest
+from jptest import *
 
 # configure argument parser
 parser = ArgumentParser()
@@ -25,11 +25,17 @@ foo = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = foo
 spec.loader.exec_module(foo)
 
+# pre run functions
+for fun in JPPreRun.FN:
+    fun()
+
 # execute tests
 achieved, total = 0.0, 0.0
 tests: Dict[str, Tuple[str, float, float, List[str]]] = {}
 
-for name, test_name, max_score, method in JPTest.TESTS:
+for test, original_fun, wrapped_fun in JPTest.TESTS:
+    test_name = original_fun.__name__
+
     if args.verbose:
         print(test_name, file=sys.stderr)
 
@@ -39,14 +45,18 @@ for name, test_name, max_score, method in JPTest.TESTS:
 
     # execute test
     try:
-        score, comments = method()
+        score, comments = wrapped_fun()
 
         achieved += score
-        tests[test_name] = name, score, max_score, comments
+        tests[test_name] = test.name, score, test.max_score, comments
     except Exception as e:
-        tests[test_name] = name, 0, max_score, [str(e)]
+        tests[test_name] = test.name, 0, test.max_score, [str(e)]
 
-    total += max_score
+    total += test.max_score
+
+# post run functions
+for fun in JPPostRun.FN:
+    fun()
 
 # print output
 if args.md:

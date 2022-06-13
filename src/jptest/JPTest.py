@@ -1,10 +1,11 @@
 import functools
 from contextlib import ExitStack
 from types import FunctionType, GeneratorType
-from typing import List, Dict, Union, Tuple
+from typing import List, Dict, Union, Tuple, Callable
 
 from testbook import testbook
 
+from .JPFixture import JPPreTest, JPPostTest
 from .JPTestBook import JPTestBook
 from .JPTestParams import JPTestParams
 
@@ -20,15 +21,15 @@ EXECUTE_TYPE = Union[Tuple[str],
 
 
 class JPTest(testbook):
-    NOTEBOOK = None
-    TESTS = []
+    NOTEBOOK: str = None
+    TESTS: List[Tuple['JPTest', Callable, Callable]] = []
 
-    def __init__(self, name: str = None, max_score: Union[float, int] = None, execute: EXECUTE_TYPE = None):
+    def __init__(self, name: str = None, max_score: Union[float, int] = None, execute: EXECUTE_TYPE = None, **kwargs):
         super().__init__(self.NOTEBOOK, execute)
 
-        self._jtb: JPTestBook = JPTestBook(self.client)
-        self._name: str = name
-        self._max_score: float = float(max_score)
+        self.tb: JPTestBook = JPTestBook(self.client, **kwargs)
+        self.name: str = name
+        self.max_score: float = None if max_score is None else float(max_score)
 
     def _prepare_recursive(self, item: EXECUTE_TYPE) -> List[JPTestParams]:
         extracted: List[JPTestParams] = []
@@ -39,9 +40,9 @@ class JPTest(testbook):
                 if 'track' in item:
                     for key in item['track']:
                         if isinstance(item['track'][key], list):
-                            cm = self._jtb.track(key, *item['track'][key])
+                            cm = self.tb.track(key, *item['track'][key])
                         else:
-                            cm = self._jtb.track(key, item['track'][key])
+                            cm = self.tb.track(key, item['track'][key])
 
                         stack.enter_context(cm)
                         extracted.append(cm)
@@ -74,19 +75,24 @@ class JPTest(testbook):
 
         return extracted
 
-    def __call__(self, func):
-        @functools.wraps(func)
+    def __call__(self, fun: Callable):
+        @functools.wraps(fun)
         def wrapper():
             test_score = 0.0
             test_comments = []
 
             with self.client.setup_kernel():
+                # pre test functions
+                for pre_test in JPPreTest.FN:
+                    pre_test(self.tb)
+
+                # execution
                 if self.execute is None:
                     tracked_parameters = []
                 else:
                     tracked_parameters = self._prepare_recursive(self.execute)
 
-                ret_val = func(self._jtb, *tracked_parameters)
+                ret_val = fun(self.tb, *tracked_parameters)
                 if isinstance(ret_val, GeneratorType):
                     for value in ret_val:
                         if len(value) == 2:
@@ -108,9 +114,13 @@ class JPTest(testbook):
                         elif neg_comment is not None:
                             test_comments.append(neg_comment)
 
-            return test_score, test_comments
+                # post test functions
+                for post_test in JPPostTest.FN:
+                    post_test(self.tb)
+
+            return max(0.0, test_score), test_comments
 
         wrapper.patchings = [self]
 
-        self.TESTS.append((self._name, func.__name__, self._max_score, wrapper))
+        self.TESTS.append((self, fun, wrapper))
         return wrapper
