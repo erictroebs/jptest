@@ -55,7 +55,9 @@ class JPTest(testbook):
             if len(item) == 2:
                 self.client.execute_cell(slice(item[0], item[1]))
             elif len(item) == 1:
-                self.client.execute_cell(item[0])
+                for idx, cell in enumerate(self.client.cells):
+                    if 'tags' in cell['metadata'] and item[0] in cell['metadata']['tags']:
+                        self.client.execute_cell(idx)
             else:
                 raise ValueError('unsupported tuple length')
 

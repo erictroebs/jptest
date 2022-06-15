@@ -26,6 +26,9 @@ sys.modules[spec.name] = foo
 spec.loader.exec_module(foo)
 
 # pre run functions
+if args.verbose:
+    print('pre run')
+
 for fun in JPPreRun.FN:
     fun()
 
@@ -55,6 +58,9 @@ for test, original_fun, wrapped_fun in JPTest.TESTS:
     total += test.max_score
 
 # post run functions
+if args.verbose:
+    print('post run')
+
 for fun in JPPostRun.FN:
     fun()
 
