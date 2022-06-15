@@ -27,7 +27,7 @@ spec.loader.exec_module(foo)
 
 # pre run functions
 if args.verbose:
-    print('pre run')
+    print('pre run', file=sys.stderr)
 
 for fun in JPPreRun.FN:
     fun()
@@ -59,7 +59,7 @@ for test, original_fun, wrapped_fun in JPTest.TESTS:
 
 # post run functions
 if args.verbose:
-    print('post run')
+    print('post run', file=sys.stderr)
 
 for fun in JPPostRun.FN:
     fun()
