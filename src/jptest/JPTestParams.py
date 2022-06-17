@@ -6,7 +6,15 @@ from . import JPTestBook
 
 
 class JPTestParams:
+    """
+    stores tracked parameters after __exit__ is called
+    """
     def __init__(self, tb: JPTestBook, fun_name: str, *parameters: Tuple[str, int]):
+        """
+        :param tb:
+        :param fun_name: function name to replace
+        :param parameters: parameters to track as tuples (name, position)
+        """
         self._tb = tb
         self._fun_name = fun_name
         self._wrapper: TestbookObjectReference
@@ -15,6 +23,11 @@ class JPTestParams:
         self._values: List[Dict[str, Any]] = []
 
     def __enter__(self):
+        """
+        replace function with wrapper
+
+        :return: self
+        """
         class_name = self._tb.random_id('Track')
         variable_name = self._tb.random_id('track')
 
@@ -55,6 +68,14 @@ class JPTestParams:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        extract parameters and replace wrapper with original function
+
+        :param exc_type:
+        :param exc_val:
+        :param exc_tb:
+        :return:
+        """
         self._tb.inject(f'''
             {self._fun_name} = {self._wrapper.name}.fun
         ''')
@@ -81,6 +102,12 @@ class JPTestParams:
         return len(self.calls)
 
     def values(self, parameter_name: str) -> List[Any]:
+        """
+        returns all values for a specific parameter
+
+        :param parameter_name: parameter name
+        :return: list of parameter values
+        """
         result = []
         for call in self.calls:
             if parameter_name in call:
@@ -89,4 +116,10 @@ class JPTestParams:
         return result
 
     def last_value(self, parameter_name: str) -> Any:
+        """
+        returns the value for a specific parameter in the last call
+
+        :param parameter_name: parameter name
+        :return: parameter value
+        """
         return self.last_call[parameter_name]

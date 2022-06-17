@@ -1,33 +1,35 @@
 # JPTest
 JPTest is a unit testing framework for Jupyter Notebooks and aims for fast test writing in less lines of code. It creates the possibility to score and automatically grade exams with separate notebook (`.ipynb`) and test (`.py`) files.
 
-Without [testbook](https://github.com/nteract/testbook) by *nteract* this would not have been possible.
+JPTest uses [testbook](https://github.com/nteract/testbook) by *nteract* for interaction with notebooks. While we mainly focus on grading, testbook might fit your use case better. So please feel free to watch [this presentation on YouTube](https://youtu.be/FseNNGmmrGs) by *Rohit Sanjay* if you want to know more about testbook.
 
 
 ## Installation
-JPTest relies on [testbook](https://github.com/nteract/testbook) and [Jupyter](https://jupyter.org/). If you need any
-other libraries for executing your notebook cells they can be installed in your environment the usual way.
+JPTest relies on [testbook](https://github.com/nteract/testbook) and [Jupyter](https://jupyter.org/). If you need any other libraries for executing your notebook cells they can be installed in your environment the usual way.
 
 The preferred way to use JPTest is in a virtual environment:
+
 ```bash
 python -m venv venv
 source venv/bin/activate
 ```
 
 Use `pip` to download and install JPTest:
+
 ```bash
 pip install jptest
 ```
 
 
 ## Usage
-You may use the decorator `@JPTest` with any function within a test file. It accepts several parameters:
+You may use the decorator `@JPTest` with any function within a test file. It accepts the following parameters. Any other named parameters are copied to the JPTestBook object.
 
 | name        | type                            | description                                                    |
 | ----------- | ------------------------------- |----------------------------------------------------------------|
 | `name`      | str                             | name used in the output                                        |
 | `max_score` | float                           | maximum score (can be exceeded, used to calculate total score) |
 | `execute`   | see [below](#execute-parameter) | cells or code to execute prior to the test                     |
+| `timeout`   | int                             | execution timeout in seconds (default: 2 minutes)              |
 
 `yield` can be used to grant points:
 
@@ -51,7 +53,7 @@ python -m jptest --help
 | name  | description                                                |
 | ----- | ---------------------------------------------------------- |
 | `ref` | get a reference to an object or function                   |
-| `get` | like `ref`, but copy to a name with a random prefix before |
+| `get` | like `ref`, but copy to a name with a random suffix before |
 
 ### Examples
 #### a simple unit test
@@ -112,12 +114,12 @@ def test_recursive(tb: JPTestBook):
 #### equality functions
 ![equality functions](doc/img/example03.png)
 
-Some objects like pandas dataframes are neither serializable nor comparable via `==`. One can call
+Some objects like pandas dataframes are neither serializable nor comparable via `==`. One can call functions like `equals` on references instead.
 
 ```python
 @JPTest('Task 3', max_score=2.0, execute=('task-3',))
 def test_task3(tb: JPTestBook):
-    # Store `df` with a random prefix and get a reference.
+    # Store `df` with a random suffix and get a reference.
     result = tb.get('df')
 
     # Inject sample solution and get a reference.
@@ -144,6 +146,9 @@ If the parameter is of type `tuple`, the value is considered as tags. If there i
 If the parameter is of type `dict`, it must include a key named `execute`, which value is executed following the rules stated in this section.
 
 It may include a key named `track`, which value is another dictionary with function names as key and a tuple or a list of tuples containing the parameters to track. The result is passed to the test function as a parameter in the order of the execution.
+
+#### Function
+If the parameter is a function (`Callable`), it will be called with the JPTestBook object as a parameter.
 
 #### List
 If the parameter is of type `list`, every element will be executed in the order of its appearence, following the rules stated above.

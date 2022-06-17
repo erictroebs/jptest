@@ -3,6 +3,9 @@ from .JPTestBook import JPTestBook
 
 
 class JPPreRun:
+    """
+    decorator to use with functions that should be executed prior to all tests
+    """
     FN: List[Callable[[], Any]] = []
 
     def __init__(self, f: Callable[[], Any]):
@@ -10,6 +13,9 @@ class JPPreRun:
 
 
 class JPPreTest:
+    """
+    decorator to use with functions that should be executed prior to any test
+    """
     FN: List[Callable[[JPTestBook], Any]] = []
 
     def __init__(self, f: Callable[[JPTestBook], Any]):
@@ -17,6 +23,9 @@ class JPPreTest:
 
 
 class JPPostTest:
+    """
+    decorator to use with functions that should be executed after any test
+    """
     FN: List[Callable[[JPTestBook], Any]] = []
 
     def __init__(self, f: Callable[[JPTestBook], Any]):
@@ -24,6 +33,9 @@ class JPPostTest:
 
 
 class JPPostRun:
+    """
+    decorator to use with functions that should be executed after all tests
+    """
     FN: List[Callable[[], Any]] = []
 
     def __init__(self, f: Callable[[], Any]):
