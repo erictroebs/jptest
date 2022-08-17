@@ -2,17 +2,18 @@ import importlib.util
 import json
 import sys
 from argparse import ArgumentParser
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Optional
 
 from jptest import *
 
 # configure argument parser
 parser = ArgumentParser()
 parser.add_argument('nb_file', help='notebook file (.ipynb) to load')
-parser.add_argument('test_file', help='test file (.py) to load')
+parser.add_argument('test_file', help='test file (.py) to load', nargs='?')
 parser.add_argument('test_name', help='test to execute (all if None given)', nargs='?')
 parser.add_argument('--json', action='store_true', help='print output as json (default)', default=True)
 parser.add_argument('--md', action='store_true', help='print output as markdown')
+parser.add_argument('--quiet', action='store_true', help='only print exceptions')
 parser.add_argument('--verbose', '-v', action='store_true', help='print verbosely to stderr')
 
 args = parser.parse_args()
@@ -20,10 +21,14 @@ args = parser.parse_args()
 # load classes from file
 JPTest.NOTEBOOK = args.nb_file
 
-spec = importlib.util.spec_from_file_location('testfile', args.test_file)
-foo = importlib.util.module_from_spec(spec)
-sys.modules[spec.name] = foo
-spec.loader.exec_module(foo)
+if args.test_file is not None:
+    spec = importlib.util.spec_from_file_location('testfile', args.test_file)
+    foo = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = foo
+    spec.loader.exec_module(foo)
+else:
+    # noinspection PyUnresolvedReferences
+    from jptest.RunTest import *
 
 # pre run functions
 if args.verbose:
@@ -34,7 +39,7 @@ for fun in JPPreRun.FN:
 
 # execute tests
 achieved, total = 0.0, 0.0
-tests: Dict[str, Tuple[str, float, float, List[str]]] = {}
+tests: Dict[str, Tuple[str, float, float, List[str], Optional[Exception]]] = {}
 
 for test, original_fun, wrapped_fun in JPTest.TESTS:
     test_name = original_fun.__name__
@@ -51,9 +56,9 @@ for test, original_fun, wrapped_fun in JPTest.TESTS:
         score, comments = wrapped_fun()
 
         achieved += score
-        tests[test_name] = test.name, score, test.max_score, comments
+        tests[test_name] = test.name, score, test.max_score, comments, None
     except Exception as e:
-        tests[test_name] = test.name, 0, test.max_score, [str(e)]
+        tests[test_name] = test.name, 0, test.max_score, [str(e)], e
 
     total += test.max_score
 
@@ -65,24 +70,29 @@ for fun in JPPostRun.FN:
     fun()
 
 # print output
-if args.md:
+if args.quiet:  # quiet
+    for _, (_, _, _, _, e) in tests.items():
+        if e is not None:
+            raise e
+
+elif args.md:  # md
     print(f'# Bewertung ({achieved} / {total})')
     print()
 
-    for test_name, (name, score, max_score, comments) in tests.items():
+    for test_name, (name, score, max_score, comments, _) in tests.items():
         print(f'## {name} ({score} / {max_score})')
         for comment in comments:
             print(f'- {comment}')
         print()
 
-else:
+else:  # json
     result = {
         'achievedScore': achieved,
         'totalScore': total,
         'tests': []
     }
 
-    for test_name, (name, score, max_score, comments) in tests.items():
+    for test_name, (name, score, max_score, comments, _) in tests.items():
         result['tests'].append({
             'test': test_name,
             'name': name,

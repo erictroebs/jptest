@@ -1,15 +1,30 @@
+from contextlib import ExitStack
+from types import FunctionType
+from typing import List, Dict, Union, Callable, Any
 from typing import Tuple
 from uuid import uuid4
 
 from testbook.client import TestbookNotebookClient
 
+from .JPTestCell import JPTestCell
 from .JPTestParams import JPTestParams
+
+TRACK_TYPE = Dict[str,
+                  Union[Tuple[str, int],
+                        List[Tuple[str, int]]]]
+EXECUTE_TYPE = Union[Tuple[str],
+                     Tuple[str, str],
+                     str,
+                     Callable[['JPTestBook'], Any],
+                     List['EXECUTE_TYPE'],
+                     Dict[str, Union['EXECUTE_TYPE', TRACK_TYPE]]]
 
 
 class JPTestBook:
     """
     main class for notebook interaction
     """
+
     def __init__(self, client: TestbookNotebookClient, **kwargs):
         self._client = client
 
@@ -66,3 +81,83 @@ class JPTestBook:
         :return: instance of JPTestParams
         """
         return JPTestParams(self, fun_name, *parameters)
+
+    def cells(self, *item: str) -> List[JPTestCell]:
+        cells = JPTestCell.from_client(self._client)
+
+        # no items: all cells
+        if len(item) == 0:
+            return cells
+
+        # one item: every cell with this tag
+        elif len(item) == 1:
+            return [cell for cell in cells if item[0] in cell.tags]
+
+        # two items: every cell from the first occurrence of the first tag to
+        # the first occurrence of the second tag
+        if len(item) == 2:
+            result = []
+
+            start = False
+            for cell in cells:
+                if item[1] in cell.tags:
+                    break
+
+                if item[0] in cell.tags:
+                    start = True
+                if start:
+                    result.append(cell)
+
+            return result
+
+        else:
+            raise ValueError('unsupported tuple length')
+
+    def execute(self, item: EXECUTE_TYPE) -> List[JPTestParams]:
+        """
+        :param item: item to execute
+        :return: a list of JPTestParams if any track directives were used
+        """
+        extracted: List[JPTestParams] = []
+
+        # dictionaries
+        if isinstance(item, dict):
+            with ExitStack() as stack:
+                # create function wrappers
+                if 'track' in item:
+                    for key in item['track']:
+                        if isinstance(item['track'][key], list):
+                            cm = self.track(key, *item['track'][key])
+                        else:
+                            cm = self.track(key, item['track'][key])
+
+                        stack.enter_context(cm)
+                        extracted.append(cm)
+
+                # execute cells
+                for ep in self.execute(item['execute']):
+                    extracted.append(ep)
+
+        # tuples
+        elif isinstance(item, tuple):
+            for cell in self.cells(*item):
+                cell.execute()
+
+        # string
+        elif isinstance(item, str):
+            self._client.inject(item)
+
+        # function
+        elif isinstance(item, FunctionType):
+            item(self)
+
+        # list
+        elif isinstance(item, list):
+            for i in item:
+                for ep in self.execute(i):
+                    extracted.append(ep)
+
+        else:
+            raise ValueError(f'unsupported parameter type {type(item)}')
+
+        return extracted
