@@ -59,7 +59,7 @@ class JPTestBook:
         if len(name) == 1:
             return self._client.ref(name[0])
         else:
-            return tuple(self.get(n) for n in name)
+            return tuple(self.ref(n) for n in name)
 
     def inject(self, code: str, *name: str):
         """
