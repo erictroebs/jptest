@@ -71,12 +71,12 @@ for fun in JPPostRun.FN:
 
 # print output
 if args.quiet:  # quiet
-    for _, (_, score, max_score, _, e) in tests.items():
+    for test_name, (_, score, max_score, _, e) in tests.items():
         if e is not None:
             raise e
 
-        if score < max_score:
-            raise AssertionError(f'score={score}, max_score={max_score}')
+        if score != max_score:
+            raise AssertionError(f'test_name={test_name}, score={score}, max_score={max_score}')
 
 elif args.md:  # md
     print(f'# Bewertung ({achieved} / {total})')

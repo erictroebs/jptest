@@ -19,7 +19,7 @@ def run(tb: JPTestBook):
             replace_name = JPTestBook.random_id('input')
             tb.inject(f'''
                 {replace_name} = input
-                input = lambda _: {replace_input}
+                input = lambda _: '{replace_input}'
             ''')
 
         # execute cell
