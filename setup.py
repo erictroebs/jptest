@@ -4,8 +4,8 @@ with open('README.md', 'r', encoding='utf-8') as file:
     long_description = file.read()
 
 setup(
-    name='jptest',
-    version='0.8.5',
+    name='jptest2',
+    version='2.0.0',
     author='Eric Tröbs',
     author_email='eric.troebs@tu-ilmenau.de',
     description='write graded unit tests for Jupyter Notebooks in a few lines of code',
@@ -24,7 +24,6 @@ setup(
     packages=find_packages(where='src'),
     python_requires='>=3.6',
     install_requires=[
-        'jupyter',
-        'testbook~=0.4.2'
+        'jupyter'
     ]
 )
