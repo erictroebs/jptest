@@ -23,7 +23,7 @@ class JPTestGet(JPTest):
                     await self._execute_recursively(nb, self._execute)
 
                 references = (nb.ref(name) for name in self._get)
-                values = asyncio.gather(*[ref.receive() for ref in references])
+                values = await asyncio.gather(*[ref.receive() for ref in references])
 
                 fun = self._fun(*values)
                 return *(await self._execute_fun(fun)), None
