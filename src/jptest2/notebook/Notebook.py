@@ -1,7 +1,7 @@
 import asyncio
 from inspect import getsource
 from os import PathLike
-from typing import Callable, List, Tuple, Union
+from typing import Callable, List, Tuple, Union, Optional
 
 import nbformat
 from nbclient import NotebookClient
@@ -166,11 +166,45 @@ class Notebook:
         loc = loc[1:]
 
         # remove return statement and subsequent lines
-        for i in range(len(loc)):
-            if loc[i].lstrip().startswith('return '):
-                loc[i] = ''.join(loc[i].split('return ', maxsplit=1))
-                loc = loc[:i + 1]
-                break
+        i: int = 0
+        inner_fun: Optional[int] = None
+        return_found: Optional[int] = None
+
+        while i < len(loc):
+            # strip line and calculate indent
+            line = loc[i].lstrip()
+            indent = len(loc[i]) - len(line)
+
+            # compare indent
+            if inner_fun is not None and indent <= inner_fun:
+                inner_fun = None
+
+            if return_found is not None and indent < return_found:
+                return_found = None
+
+            # remove empty lines
+            if line == '':
+                del loc[i]
+                continue
+
+            # skip inner functions
+            if line.startswith('def '):
+                inner_fun = indent
+
+            if inner_fun:
+                i += 1
+                continue
+
+            # remove return statements and lines in block after
+            if return_found:
+                del loc[i]
+                continue
+
+            if line.startswith('return '):
+                loc[i] = f'{" " * indent}{line[7:]}'
+                return_found = indent
+
+            i += 1
 
         # recreate code from locs
         code = '\n'.join(loc)
