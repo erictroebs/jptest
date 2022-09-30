@@ -1,0 +1,96 @@
+import asyncio
+import importlib.util
+import json
+import sys
+from argparse import ArgumentParser
+
+from jptest2 import JPTest, JPPreRun, JPPostRun
+
+
+async def main():
+    # configure argument parser
+    parser = ArgumentParser()
+    parser.add_argument('nb_file', help='notebook file (.ipynb) to load')
+    parser.add_argument('test_file', help='test file (.py) to load', nargs='?')
+    parser.add_argument('test_name', help='test to execute (all if None given)', nargs='?')
+    parser.add_argument('--json', action='store_true', help='print output as json (default)', default=True)
+    parser.add_argument('--md', action='store_true', help='print output as markdown')
+    parser.add_argument('--quiet', action='store_true', help='only print exceptions')
+    parser.add_argument('--verbose', '-v', action='store_true', help='print verbosely to stderr')
+
+    args = parser.parse_args()
+
+    # load classes from file
+    if args.test_file is not None:
+        spec = importlib.util.spec_from_file_location('testfile', args.test_file)
+        foo = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = foo
+        spec.loader.exec_module(foo)
+    else:
+        # noinspection PyUnresolvedReferences
+        import jptest2.RunTest
+
+    # pre run functions
+    if args.verbose:
+        print('pre run', file=sys.stderr)
+
+    if len(JPPreRun.FN) > 0:
+        await asyncio.gather(*[f() for f in JPPreRun.FN])
+
+    # filter and execute tests
+    tests = [t for t in JPTest.TESTS if args.test_name is None or args.test_name == t.test_name]
+    results = await asyncio.gather(*[t.execute(args.nb_file) for t in tests])
+
+    # post run functions
+    if args.verbose:
+        print('post run', file=sys.stderr)
+
+    if len(JPPostRun.FN) > 0:
+        await asyncio.gather(*[f() for f in JPPostRun.FN])
+
+    # print output
+    if args.quiet:  # quiet
+        for test, (score, comments, e) in zip(tests, results):
+            if e is not None:
+                raise e
+
+            if score != test.max_score:
+                raise AssertionError(f'test_name={test.test_name}, score={score}, max_score={test.max_score}')
+
+    elif args.md:  # md
+        achieved = sum((score for score, _, _ in results))
+        total = sum((test.max_score for test in tests))
+
+        print(f'# Bewertung ({achieved} / {total})')
+        print()
+
+        for test, (score, comments, e) in zip(tests, results):
+            print(f'## {test.name} ({score} / {test.max_score})')
+            for comment in comments:
+                print(f'- {comment}')
+            print()
+
+    else:  # json
+        achieved = sum((score for score, _, _ in results))
+        total = sum((test.max_score for test in tests))
+
+        result = {
+            'achievedScore': achieved,
+            'totalScore': total,
+            'tests': []
+        }
+
+        for test, (score, comments, e) in zip(tests, results):
+            result['tests'].append({
+                'test': test.test_name,
+                'name': test.name,
+                'achievedScore': score,
+                'totalScore': test.max_score,
+                'comments': comments
+            })
+
+        print(json.dumps(result, indent=4))
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

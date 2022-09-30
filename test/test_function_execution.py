@@ -13,7 +13,7 @@ async def test_execute_function():
 
     async with Notebook('execute_code.ipynb') as nb:
         result = await nb.execute_fun(my_fun)
-        assert result == (
+        assert result.output() == (
             [('text/plain', str(my_fun()))],
             None,
             None,

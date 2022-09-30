@@ -15,7 +15,9 @@ async def test_replace_function():
         # replace function
         async with nb.replace_fun('nb_fun', local_fun):
             # compare results
-            (result, *_), *_ = await nb.execute_cells('execution')
+            cells = await nb.execute_cells('execution')
+            result, *_ = cells[0].output()
+
             assert any([val == '10' for _, val in result])
 
             await nb.execute_cells('store')
@@ -23,7 +25,9 @@ async def test_replace_function():
             assert result == 110
 
         # get results again after backup was restored
-        (result, *_), *_ = await nb.execute_cells('execution')
+        cells = await nb.execute_cells('execution')
+        result, *_ = cells[0].output()
+
         assert any([val == '5' for _, val in result])
 
         await nb.execute_cells('store')

@@ -76,10 +76,10 @@ class NotebookReference:
 
         :return: value
         """
-        result, _, _, _ = await self._nb.execute_code(f'''
+        result, o, e, p = (await self._nb.execute_code(f'''
             import pickle, base64
             base64.b64encode(pickle.dumps({self.name})).decode('ascii')
-        ''')
+        ''')).output()
 
         for mime, value in result:
             if mime != 'text/plain':

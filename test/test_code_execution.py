@@ -18,10 +18,10 @@ def read_image(path: str) -> str:
 async def test_execute_code():
     async with Notebook('execute_code.ipynb') as nb:
         # execute result
-        exec, out, err, dsp = await nb.execute_code('''
+        exec, out, err, dsp = (await nb.execute_code('''
             1 + 1
             5 + 15
-        ''')
+        ''')).output()
 
         assert exec == [('text/plain', '20')]
         assert out is None
@@ -29,10 +29,10 @@ async def test_execute_code():
         assert dsp == []
 
         # stdout
-        exec, out, err, dsp = await nb.execute_code('''
+        exec, out, err, dsp = (await nb.execute_code('''
             print(2)
             print(5)
-        ''')
+        ''')).output()
 
         assert exec == []
         assert out == '2\n5\n'
@@ -40,11 +40,11 @@ async def test_execute_code():
         assert dsp == []
 
         # stderr
-        exec, out, err, dsp = await nb.execute_code('''
+        exec, out, err, dsp = (await nb.execute_code('''
             import sys
             print(3, file=sys.stderr)
             print(6, file=sys.stderr)
-        ''')
+        ''')).output()
 
         assert exec == []
         assert out is None
@@ -58,10 +58,10 @@ async def test_execute_code():
             ''')
 
         # display data
-        exec, out, err, dsp = await nb.execute_code('''
+        exec, out, err, dsp = (await nb.execute_code('''
             from IPython.display import display, Image
             display(Image('stripes.png'))
-        ''')
+        ''')).output()
 
         assert exec == []
         assert out is None
@@ -72,10 +72,10 @@ async def test_execute_code():
         ]
 
         # display_data in execute_result
-        exec, out, err, dsp = await nb.execute_code('''
+        exec, out, err, dsp = (await nb.execute_code('''
             from IPython.display import display, Image
             Image('stripes.png')
-        ''')
+        ''')).output()
 
         assert exec == [
             ('image/png', f'{read_image("stripes.png")}\n'),
@@ -89,7 +89,10 @@ async def test_execute_code():
 @pytest.mark.asyncio
 async def test_execute_all_cells():
     async with Notebook('execute_code.ipynb') as nb:
-        result = await nb.execute_cells()
+        cells = await nb.execute_cells()
+        assert len(cells) == 10
+
+        result = [c.output() for c in cells]
         assert result == [(
             [],
             None,
@@ -111,12 +114,32 @@ async def test_execute_all_cells():
             None,
             []
         ), (
-            [('text/plain', '110')],
+            [('text/plain', '111')],
             None,
             None,
             []
         ), (
-            [('text/plain', '1110')],
+            [('text/plain', '115')],
+            None,
+            None,
+            []
+        ), (
+            [('text/plain', '1115')],
+            None,
+            None,
+            []
+        ), (
+            [('text/plain', '200')],
+            None,
+            None,
+            []
+        ), (
+            [('text/plain', '201')],
+            None,
+            None,
+            []
+        ), (
+            [('text/plain', '300')],
             None,
             None,
             []
@@ -124,10 +147,14 @@ async def test_execute_all_cells():
 
 
 @pytest.mark.asyncio
-async def test_execute_cells():
+async def test_execute_cells_by_tag():
     async with Notebook('execute_code.ipynb') as nb:
         # only cells with tag 'task-1'
-        result = await nb.execute_cells('task-1')
+        cells = await nb.execute_cells('task-1')
+        assert len(cells) == 2
+
+        result = [c.output() for c in cells]
+
         assert result == [(
             [('text/plain', '6')],
             None,
@@ -141,14 +168,85 @@ async def test_execute_cells():
         )]
 
         # only cells with tag `task-2` and `task-3`
-        result = await nb.execute_cells('task-2', 'task-3')
+        cells = await nb.execute_cells('task-2', 'task-3')
+        assert len(cells) == 3
+
+        result = [c.output() for c in cells]
+
         assert result == [(
             [('text/plain', '106')],
             None,
             None,
             []
         ), (
-            [('text/plain', '1106')],
+            [('text/plain', '111')],
+            None,
+            None,
+            []
+        ), (
+            [('text/plain', '1111')],
+            None,
+            None,
+            []
+        )]
+
+
+@pytest.mark.asyncio
+async def test_execute_cells_from_to():
+    async with Notebook('execute_code.ipynb') as nb:
+        cells = await nb.execute_cells(from_tag='task-2', to_tag='task-4')
+        assert len(cells) == 5
+
+        result = [c.output() for c in cells]
+
+        assert result == [(
+            [('text/plain', '106')],
+            None,
+            None,
+            []
+        ), (
+            [('text/plain', '111')],
+            None,
+            None,
+            []
+        ), (
+            [('text/plain', '115')],
+            None,
+            None,
+            []
+        ), (
+            [('text/plain', '1115')],
+            None,
+            None,
+            []
+        ), (
+            [('text/plain', '200')],
+            None,
+            None,
+            []
+        )]
+
+
+@pytest.mark.asyncio
+async def test_execute_cells_mixed():
+    async with Notebook('execute_code.ipynb') as nb:
+        cells = await nb.execute_cells('task-2', 'task-3', from_tag='task-2', to_tag='task-4')
+        assert len(cells) == 3
+
+        result = [c.output() for c in cells]
+
+        assert result == [(
+            [('text/plain', '106')],
+            None,
+            None,
+            []
+        ), (
+            [('text/plain', '111')],
+            None,
+            None,
+            []
+        ), (
+            [('text/plain', '1111')],
             None,
             None,
             []

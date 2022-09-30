@@ -1,17 +1,17 @@
 import asyncio
 from inspect import getsource
 from os import PathLike
-from typing import Callable
+from typing import Callable, List, Tuple, Union
 
 import nbformat
 from nbclient import NotebookClient
 from nbformat import NotebookNode
 from nbformat.v4 import new_code_cell
 
+from .NotebookCell import NotebookCell
 from .NotebookFunctionReplacement import NotebookFunctionReplacement
 from .NotebookFunctionWrapper import NotebookFunctionWrapper
 from .NotebookReference import NotebookReference
-from .util import *
 
 
 class Notebook:
@@ -26,6 +26,7 @@ class Notebook:
         """
         self._nb: NotebookNode = nbformat.read(notebook, as_version=4)
         self._nc: NotebookClient = NotebookClient(self._nb, kernel_name='python3', timeout=timeout)
+        self._lock: asyncio.Lock = asyncio.Lock()
 
     async def __aenter__(self) -> "Notebook":
         """
@@ -80,9 +81,9 @@ class Notebook:
         :param names: list of names
         :return: list of NotebookReference
         """
-        return await asyncio.gather(*(self.get(n) for n in names))
+        return await asyncio.gather(*[self.get(n) for n in names])
 
-    async def execute_code(self, code: str) -> CELL_EXECUTION_RESULT:
+    async def execute_code(self, code: str) -> NotebookCell:
         """
         execute code in notebook context
 
@@ -97,31 +98,57 @@ class Notebook:
         self._nb.cells.append(cell)
 
         # execute cell
-        await self._nc.async_execute_cell(cell=cell, cell_index=insert_index)
+        nb_cell = NotebookCell(self._nb, self._nc, self._lock, insert_index)
+        await nb_cell.execute()
 
         # parse output
-        return parse_outputs(cell)
+        return nb_cell
 
-    async def execute_cells(self, *tag: str) -> List[CELL_EXECUTION_RESULT]:
+    @property
+    def cells(self) -> List[NotebookCell]:
         """
-        Executes all code cells matching one of the given tags. Executes every code cell if no tag is given.
+        get a list of all cells
+
+        :return: list of NotebookCell
+        """
+        return [NotebookCell(self._nb, self._nc, self._lock, i) for i in range(len(self._nb.cells))]
+
+    async def execute_cells(self, *tag: str, from_tag: str = None, to_tag: str = None) -> List[NotebookCell]:
+        """
+        execute code cells
+          - all cells by default
+          - matching at least one of the given tags if given
+          - only between first occurrence of `from_tag` to first occurrence of `to_tag` if given
 
         :param tag: cell tags
+        :param from_tag: start execution after first occurrence
+        :param to_tag: stop execution after first occurrence
         :return:
         """
-        result: List[CELL_EXECUTION_RESULT] = []
+        result: List[NotebookCell] = []
 
-        for index, cell in enumerate(self._nb.cells):
-            if cell['cell_type'] != 'code':
+        start_tag_found = False
+        end_tag_found = False
+
+        for cell in self.cells:
+            if from_tag in cell.tags:
+                start_tag_found = True
+            if to_tag in cell.tags:
+                end_tag_found = True
+
+            if cell.type != 'code' or (from_tag is not None and not start_tag_found):
                 continue
 
-            if len(tag) == 0 or 'tags' in cell['metadata'] and any([t in cell['metadata']['tags'] for t in tag]):
-                await self._nc.async_execute_cell(cell=cell, cell_index=index)
-                result.append(parse_outputs(cell))
+            if len(tag) == 0 or any([t in cell.tags for t in tag]):
+                await cell.execute()
+                result.append(cell)
+
+            if end_tag_found:
+                break
 
         return result
 
-    async def execute_fun(self, fun: Callable) -> CELL_EXECUTION_RESULT:
+    async def execute_fun(self, fun: Callable) -> NotebookCell:
         """
         strip header from function and execute in notebook context
 
