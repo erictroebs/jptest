@@ -175,6 +175,11 @@ class Notebook:
             line = loc[i].lstrip()
             indent = len(loc[i]) - len(line)
 
+            # remove empty lines
+            if line == '':
+                del loc[i]
+                continue
+
             # compare indent
             if inner_fun is not None and indent <= inner_fun:
                 inner_fun = None
@@ -182,13 +187,8 @@ class Notebook:
             if return_found is not None and indent < return_found:
                 return_found = None
 
-            # remove empty lines
-            if line == '':
-                del loc[i]
-                continue
-
             # skip inner functions
-            if line.startswith('def '):
+            if line.startswith('def ') or line.startswith('async def '):
                 inner_fun = indent
 
             if inner_fun:
