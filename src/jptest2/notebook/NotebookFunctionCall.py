@@ -28,6 +28,9 @@ class NotebookFunctionCall:
     def __getitem__(self, key: str) -> Optional[Any]:
         return self._parameters[key]
 
+    def __contains__(self, key: str) -> bool:
+        return key in self._parameters
+
     @property
     def parameter_names(self) -> List[str]:
         """
