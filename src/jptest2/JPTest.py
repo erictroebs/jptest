@@ -1,3 +1,4 @@
+import asyncio
 from os import PathLike
 from types import FunctionType
 from typing import Protocol, Union, AsyncIterable, List, Awaitable, AsyncGenerator, Tuple, Callable, Iterable
@@ -24,17 +25,19 @@ class JPTest:
     TESTS: List['JPTest'] = []
 
     def __init__(self, name: str = None, max_score: Union[float, int] = 0, timeout: int = 120,
-                 execute: EXECUTE_TYPE = None):
+                 execute: EXECUTE_TYPE = None, prepare_second: bool = False):
         """
         :param name: name used in the output
         :param max_score: maximum score (can be exceeded, used to calculate total score)
         :param timeout: execution timeout in seconds (default: 2 minutes)
         :param execute: cells, code and functions to execute prior to the test
+        :param prepare_second: create two notebooks and use `execute` with both in parallel
         """
 
         self.name: str = name
         self.max_score: float = float(max_score)
         self.timeout: int = timeout
+        self.prepare_second: bool = prepare_second
 
         self._fun: JPTestFunction
         self._execute = execute
@@ -113,12 +116,26 @@ class JPTest:
         return test_score, test_comments
 
     async def execute(self, notebook: Union[str, PathLike]):
-        async with Notebook(notebook) as nb:
-            try:
-                if self._execute is not None:
-                    await self._execute_recursively(nb, self._execute)
+        try:
+            if not self.prepare_second:
+                async with Notebook(notebook) as nb:
+                    if self._execute is not None:
+                        await self._execute_recursively(nb, self._execute)
 
-                fun = self._fun(nb)
-                return *(await self._execute_fun(fun)), None
-            except Exception as e:
-                return 0, [str(e)], e
+                    fun = self._fun(nb)
+                    return *(await self._execute_fun(fun)), None
+
+            else:
+                async with \
+                        Notebook(notebook) as left, \
+                        Notebook(notebook) as right:
+                    if self._execute is not None:
+                        await asyncio.gather(*[
+                            self._execute_recursively(left, self._execute),
+                            self._execute_recursively(right, self._execute)
+                        ])
+
+                    fun = self._fun(left, right)
+                    return *(await self._execute_fun(fun)), None
+        except Exception as e:
+            return 0, [str(e)], e
