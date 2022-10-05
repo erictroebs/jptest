@@ -87,6 +87,17 @@ async def test_execute_code():
 
 
 @pytest.mark.asyncio
+async def test_store():
+    async with Notebook('execute_code.ipynb') as nb:
+        val = {
+            'a': 1,
+            'b': [2, 'c']
+        }
+        ref = await nb.store('new_value', val)
+        assert await ref.receive() == val
+
+
+@pytest.mark.asyncio
 async def test_execute_all_cells():
     async with Notebook('execute_code.ipynb') as nb:
         cells = await nb.execute_cells()

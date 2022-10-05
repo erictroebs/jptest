@@ -1,7 +1,8 @@
 import asyncio
+import pickle
 from inspect import getsource
 from os import PathLike
-from typing import Callable, List, Tuple, Union, Optional
+from typing import Callable, List, Tuple, Union, Optional, Any
 
 import nbformat
 from nbclient import NotebookClient
@@ -147,6 +148,15 @@ class Notebook:
                 break
 
         return result
+
+    async def store(self, name: str, value: Any) -> NotebookReference:
+        encoded_value = pickle.dumps(value)
+        await self.execute_code(f'''
+            import pickle
+            {name} = pickle.loads({encoded_value})
+        ''')
+
+        return self.ref(name)
 
     async def execute_fun(self, fun: Callable) -> NotebookCell:
         """
