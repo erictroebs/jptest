@@ -5,7 +5,7 @@ with open('README.md', 'r', encoding='utf-8') as file:
 
 setup(
     name='jptest2',
-    version='2.0.7',
+    version='2.0.8',
     author='Eric Tröbs',
     author_email='eric.troebs@tu-ilmenau.de',
     description='write graded unit tests for Jupyter Notebooks in a few lines of code',

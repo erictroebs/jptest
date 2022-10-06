@@ -3,6 +3,7 @@ import importlib.util
 import json
 import sys
 from argparse import ArgumentParser
+from asyncio import Semaphore
 
 from jptest2 import JPTest, JPPreRun, JPPostRun
 
@@ -14,6 +15,7 @@ async def main():
     parser.add_argument('test_file', help='test file (.py) to load', nargs='?')
     parser.add_argument('test_name', help='test to execute (all if None given)', nargs='?')
     parser.add_argument('--json', action='store_true', help='print output as json (default)', default=True)
+    parser.add_argument('--proc', type=int, help='number of notebook processes to start concurrently', default=1000)
     parser.add_argument('--md', action='store_true', help='print output as markdown')
     parser.add_argument('--quiet', action='store_true', help='only print exceptions')
     parser.add_argument('--verbose', '-v', action='store_true', help='print verbosely to stderr')
@@ -38,8 +40,14 @@ async def main():
         await asyncio.gather(*[f() for f in JPPreRun.FN])
 
     # filter and execute tests
+    proc: Semaphore = Semaphore(args.proc)
+
+    async def ensure_proc(async_fun):
+        async with proc:
+            return await async_fun
+
     tests = [t for t in JPTest.TESTS if args.test_name is None or args.test_name == t.test_name]
-    results = await asyncio.gather(*[t.execute(args.nb_file) for t in tests])
+    results = await asyncio.gather(*[ensure_proc(t.execute(args.nb_file)) for t in tests])
 
     # post run functions
     if args.verbose:
