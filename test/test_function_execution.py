@@ -78,8 +78,7 @@ async def test_inject_function():
 
     async with Notebook('execute_code.ipynb') as nb:
         nb_fun = await nb.inject_fun(my_fun)
-        result_ref = await nb_fun()
-        result = await result_ref.receive()
+        result = await nb_fun().receive()
 
         assert result == my_fun()
 
@@ -90,7 +89,6 @@ async def test_inject_lambda_function():
 
     async with Notebook('execute_code.ipynb') as nb:
         nb_fun = await nb.inject_fun(my_lambda)
-        result_ref = await nb_fun(12)
-        result = await result_ref.receive()
+        result = await nb_fun(12).receive()
 
         assert result == my_lambda(12)

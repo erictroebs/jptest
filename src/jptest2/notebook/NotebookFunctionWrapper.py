@@ -160,7 +160,7 @@ class NotebookFunctionWrapper:
 
         :return:
         """
-        await self._wrapper.clear()
+        await self._wrapper.clear().execute()
 
     async def receive(self) -> List[NotebookFunctionCall]:
         """

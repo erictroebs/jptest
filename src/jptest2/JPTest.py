@@ -23,8 +23,9 @@ class JPTest:
     decorator to use with test functions
     """
     TESTS: List['JPTest'] = []
+    DEFAULT_TIMEOUT = 120
 
-    def __init__(self, name: str = None, max_score: Union[float, int] = 0, timeout: int = 120,
+    def __init__(self, name: str = None, max_score: Union[float, int] = 0, timeout: int = None,
                  execute: EXECUTE_TYPE = None, prepare_second: bool = False):
         """
         :param name: name used in the output
@@ -36,7 +37,7 @@ class JPTest:
 
         self.name: str = name
         self.max_score: float = float(max_score)
-        self.timeout: int = timeout
+        self.timeout: int = timeout or JPTest.DEFAULT_TIMEOUT
         self.prepare_second: bool = prepare_second
 
         self._fun: JPTestFunction

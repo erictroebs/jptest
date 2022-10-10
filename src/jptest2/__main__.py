@@ -17,10 +17,14 @@ async def main():
     parser.add_argument('--json', action='store_true', help='print output as json (default)', default=True)
     parser.add_argument('--proc', type=int, help='number of notebook processes to start concurrently', default=1000)
     parser.add_argument('--md', action='store_true', help='print output as markdown')
+    parser.add_argument('--timeout', type=int, help='override default timeout in seconds (default 120s)', default=120)
     parser.add_argument('--quiet', action='store_true', help='only print exceptions')
     parser.add_argument('--verbose', '-v', action='store_true', help='print verbosely to stderr')
 
     args = parser.parse_args()
+
+    # override default timeout
+    JPTest.DEFAULT_TIMEOUT = args.timeout
 
     # load classes from file
     if args.test_file is not None:

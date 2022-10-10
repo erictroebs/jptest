@@ -52,23 +52,23 @@ async def test_reference_call():
         lo_c = await nb_c.receive()
 
         # args: call with notebook parameters
-        result = await (await nb_fun(nb_a, nb_c)).receive()
+        result = await nb_fun(nb_a, nb_c).receive()
         assert result == (lo_c, lo_a)
 
         # args: call with local parameters
-        result = await (await nb_fun(lo_a, lo_c)).receive()
+        result = await nb_fun(lo_a, lo_c).receive()
         assert result == (lo_c, lo_a)
 
         # args: call with mixed parameters
-        result = await (await nb_fun(nb_a, lo_c)).receive()
+        result = await nb_fun(nb_a, lo_c).receive()
         assert result == (lo_c, lo_a)
 
         # kwargs: call with notebook parameter
-        result = await (await nb_fun(nb_a, nb_c, replace_second=nb_b)).receive()
+        result = await nb_fun(nb_a, nb_c, replace_second=nb_b).receive()
         assert result == (lo_b, lo_a)
 
         # kwargs: call with local parameter
-        result = await (await nb_fun(nb_a, nb_c, replace_second=lo_b)).receive()
+        result = await nb_fun(nb_a, nb_c, replace_second=lo_b).receive()
         assert result == (lo_b, lo_a)
 
 

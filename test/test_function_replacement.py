@@ -49,7 +49,7 @@ async def test_replace_module_function():
         # replace function in module
         async with nb.replace_fun('math.ceil', local_fun):
             # get function and receive result
-            result = await (await nb.ref('math.ceil')()).receive()
+            result = await nb.ref('math.ceil')().receive()
             assert result == (1, 2, 3)
 
 
@@ -70,7 +70,7 @@ async def test_replace_class_function():
         async with nb.replace_fun('Test.fun', local_fun):
             # create object and receive result
             await nb.execute_code('a = Test()')
-            result = await (await nb.ref('a').fun()).receive()
+            result = await nb.ref('a').fun().receive()
 
             assert result == (1, 2, 3)
 
@@ -93,8 +93,8 @@ async def test_replace_object_function():
 
         # replace function
         async with nb.replace_fun('a.fun', local_fun):
-            result_a = await (await nb.ref('a').fun()).receive()
+            result_a = await nb.ref('a').fun().receive()
             assert result_a == (1, 2, 3)
 
-            result_b = await (await nb.ref('b').fun()).receive()
+            result_b = await nb.ref('b').fun().receive()
             assert result_b == 5

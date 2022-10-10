@@ -20,7 +20,7 @@ async def test_ref():
             'a': 1,
             'b': 2
         }
-        assert await (await nb_swap(a, b)).receive() == ('b', 'a')
+        assert await nb_swap(a, b).receive() == ('b', 'a')
 
         # change in notebook
         await nb.execute_cells('change')
@@ -32,7 +32,7 @@ async def test_ref():
             'a': 11,
             'b': 2
         }
-        assert await (await nb_swap(a, b)).receive() == 1
+        assert await nb_swap(a, b).receive() == 1
 
 
 @pytest.mark.asyncio
@@ -52,7 +52,7 @@ async def test_get():
             'a': 1,
             'b': 2
         }
-        assert await (await nb_swap(a, b)).receive() == ('b', 'a')
+        assert await nb_swap(a, b).receive() == ('b', 'a')
 
         # change in notebook
         await nb.execute_cells('change')
@@ -64,4 +64,4 @@ async def test_get():
             'a': 11,
             'b': 2
         }
-        assert await (await nb_swap(a, b)).receive() == ('b', 'a')
+        assert await nb_swap(a, b).receive() == ('b', 'a')

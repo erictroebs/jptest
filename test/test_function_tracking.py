@@ -234,9 +234,9 @@ async def test_first_and_last_call():
 
         # track function
         async with nb.track_fun('nb1', all_parameters=True, return_values=True) as track:
-            await nb.ref('nb1')(1, 2)
-            await nb.ref('nb1')(5, 4)
-            await nb.ref('nb1')(11, 12)
+            await nb.ref('nb1')(1, 2).receive()
+            await nb.ref('nb1')(5, 4).receive()
+            await nb.ref('nb1')(11, 12).receive()
 
         # get first call
         first_call = await track.receive_first()
@@ -268,10 +268,10 @@ async def test_ctx_exit():
 
         # track function
         async with nb.track_fun('nb1', all_parameters=True, return_values=True) as track:
-            await nb.ref('nb1')(1, 2)
-            await nb.ref('nb1')(3, 4)
+            await nb.ref('nb1')(1, 2).receive()
+            await nb.ref('nb1')(3, 4).receive()
 
-        await nb.ref('nb1')(5, 6)
+        await nb.ref('nb1')(5, 6).receive()
 
         # get result and compare
         calls = await track.receive()
