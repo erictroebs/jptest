@@ -15,7 +15,7 @@ async def main():
     parser.add_argument('test_file', help='test file (.py) to load', nargs='?')
     parser.add_argument('test_name', help='test to execute (all if None given)', nargs='?')
     parser.add_argument('--json', action='store_true', help='print output as json (default)', default=True)
-    parser.add_argument('--proc', type=int, help='number of notebook processes to start concurrently', default=1000)
+    parser.add_argument('--tests', type=int, help='number of tests to process concurrently', default=1000)
     parser.add_argument('--md', action='store_true', help='print output as markdown')
     parser.add_argument('--timeout', type=int, help='override default timeout in seconds (default 120s)', default=120)
     parser.add_argument('--quiet', action='store_true', help='only print exceptions')
@@ -44,7 +44,7 @@ async def main():
         await asyncio.gather(*[f() for f in JPPreRun.FN])
 
     # filter and execute tests
-    proc: Semaphore = Semaphore(args.proc)
+    proc: Semaphore = Semaphore(args.tests)
 
     async def ensure_proc(async_fun):
         async with proc:

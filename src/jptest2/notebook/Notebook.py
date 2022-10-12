@@ -20,14 +20,16 @@ class Notebook:
     class for async interaction with notebooks
     """
 
-    def __init__(self, notebook: Union[str, PathLike], timeout: int = 120):
+    def __init__(self, notebook: Union[str, PathLike], execute: bool = False, timeout: int = 120):
         """
         :param notebook: notebook path
-        :param timeout: timeout in seconds
+        :param execute: execute all cells in `__aenter__`
+        :param timeout: timeout per cell in seconds
         """
         self._nb: NotebookNode = nbformat.read(notebook, as_version=4)
         self._nc: NotebookClient = NotebookClient(self._nb, kernel_name='python3', timeout=timeout)
         self._lock: asyncio.Lock = asyncio.Lock()
+        self._execute: bool = execute
 
     async def __aenter__(self) -> "Notebook":
         """
@@ -36,6 +38,10 @@ class Notebook:
         :return: self
         """
         await self._nc.async_setup_kernel(cleanup_kc=False).__aenter__()
+
+        if self._execute:
+            await self.execute_cells()
+
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -47,6 +53,15 @@ class Notebook:
         :param exc_tb:
         """
         await self._nc._async_cleanup_kernel()
+
+    def __getattr__(self, name: str) -> NotebookReference:
+        """
+        alias for `ref`
+
+        :param name: name of object
+        :return: NotebookReference
+        """
+        return self.ref(name)
 
     def ref(self, name: str) -> NotebookReference:
         """
