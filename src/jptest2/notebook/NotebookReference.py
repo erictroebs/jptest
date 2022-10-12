@@ -76,10 +76,7 @@ class NotebookReference:
         return await self._nb.ref(f'len({self.name})').receive()
 
     async def execute(self) -> NotebookCell:
-        return await self._nb.execute_code(f'''
-            import pickle, base64
-            base64.b64encode(pickle.dumps({self.name})).decode('ascii')
-        ''')
+        return await self._nb.execute_code(self.name)
 
     async def receive(self) -> Any:
         """
@@ -87,7 +84,10 @@ class NotebookReference:
 
         :return: value
         """
-        result, o, e, p = (await self.execute()).output()
+        result, o, e, p = (await self._nb.execute_code(f'''
+            import pickle, base64
+            base64.b64encode(pickle.dumps({self.name})).decode('ascii')
+        ''')).output()
 
         for mime, value in result:
             if mime != 'text/plain':
