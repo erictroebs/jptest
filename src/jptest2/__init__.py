@@ -1,4 +1,4 @@
-from .JPFixture import JPPreRun, JPPostRun
+from .JPSetup import JPSetup, JPTeardown
 from .JPTest import JPTest
 from .JPTestComparison import JPTestComparison
 from .JPTestGet import JPTestGet
