@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import pickle
 from typing import Any
@@ -78,6 +79,10 @@ class NotebookReference:
     async def execute(self) -> NotebookCell:
         return await self._nb.execute_code(self.name)
 
+    @staticmethod
+    async def execute_many(*references: "NotebookReference"):
+        return await asyncio.gather(*[ref.execute() for ref in references])
+
     async def receive(self) -> Any:
         """
         serialize, transfer and deserialize referenced object from notebook context
@@ -95,3 +100,7 @@ class NotebookReference:
 
             result_value = pickle.loads(base64.b64decode(value.encode('ascii')))
             return result_value
+
+    @staticmethod
+    async def receive_many(*references: "NotebookReference"):
+        return await asyncio.gather(*[ref.receive() for ref in references])

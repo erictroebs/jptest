@@ -1,11 +1,12 @@
-# JPTest
-JPTest is a unit testing framework for Jupyter Notebooks and aims for fast test writing in less lines of code. It creates the possibility to score and automatically grade exams with separate notebook (`.ipynb`) and test (`.py`) files.
+# JPTest2
 
-JPTest uses [testbook](https://github.com/nteract/testbook) by *nteract* for interaction with notebooks. While we mainly focus on grading, testbook might fit your use case better. So please feel free to watch [this presentation on YouTube](https://youtu.be/FseNNGmmrGs) by *Rohit Sanjay* if you want to know more about testbook.
+JPTest is a unit testing framework for Jupyter Notebooks and aims for fast test writing in less lines of code. It
+creates the possibility to score and automatically grade exams with separate notebook (`.ipynb`) and test (`.py`) files.
 
+## Quick Start
 
-## Installation
-JPTest relies on [testbook](https://github.com/nteract/testbook) and [Jupyter](https://jupyter.org/). If you need any other libraries for executing your notebook cells they can be installed in your environment the usual way.
+JPTest relies on [Jupyter](https://jupyter.org/). If you need any other libraries for executing your notebook cells they
+can be installed in your environment the usual way.
 
 The preferred way to use JPTest is in a virtual environment:
 
@@ -17,138 +18,137 @@ source venv/bin/activate
 Use `pip` to download and install JPTest:
 
 ```bash
-pip install jptest
+pip install jptest2
 ```
 
-
-## Usage
-You may use the decorator `@JPTest` with any function within a test file. It accepts the following parameters. Any other named parameters are copied to the JPTestBook object.
-
-| name        | type                            | description                                                    |
-| ----------- | ------------------------------- |----------------------------------------------------------------|
-| `name`      | str                             | name used in the output                                        |
-| `max_score` | float                           | maximum score (can be exceeded, used to calculate total score) |
-| `execute`   | see [below](#execute-parameter) | cells or code to execute prior to the test                     |
-| `timeout`   | int                             | execution timeout in seconds (default: 2 minutes)              |
-
-`yield` can be used to grant points:
+Now imagine that your student has to implement a Fibonacci function called `fibonacci`, which accepts a single parameter
+`n` and returns the n-th fibonacci number. Inside the notebook to submit, you prepared a cell with the tag `task-1`. A
+simple test could look like the following example:
 
 ```python
-yield condition: bool, value: float, [comment if True: str, [comment if False: str]]
+from jptest2 import *
+
+# Create test with name "Task 1" and a maximum score of 1.
+# Execute *all* cells with tag "task-1" prior to executing the test function.
+# Please note: Every test function must be async!
+@JPTest('Task 1', max_score=1, execute=('task-1',))
+async def test_task1(nb: Notebook):
+    # Create a reference to the function `fibonacci` inside the notebook.
+    fib_fun_in_nb = nb.ref('fibonacci')
+
+    # Receive five results from the fibonacci function.
+    result = await NotebookReference.receive_many(
+        fib_fun_in_nb(1),
+        fib_fun_in_nb(2),
+        fib_fun_in_nb(3),
+        fib_fun_in_nb(4),
+        fib_fun_in_nb(5)
+    )
+
+    # Yield a tuple containing a condition, an award, a comment in case the
+    # condition is false and a comment in case the condition is true.
+    yield result == [1, 1, 2, 3, 5], 1, 'fib fun incorrect', 'fib fun correct'
 ```
 
-Run the `jptest` module with the notebook and test file as parameters. Every test with the decorator is automatically discovered and executed.
+Let us assume the notebook file is called `notebook.ipynb` and the test file is called `tests.py`. Call JPTest with the
+following command:
 
 ```bash
-python -m jptest notebook.ipynb tests.py
+python -m jptest2 notebook.ipynb tests.py
 ```
 
-For more parameters see the included help:
+## Contexts and Processes
 
-```bash
-python -m jptest --help
-```
+- Notebook and Test Context
 
-### Useful Functions
-| name  | description                                                |
-| ----- | ---------------------------------------------------------- |
-| `ref` | get a reference to an object or function                   |
-| `get` | like `ref`, but copy to a name with a random suffix before |
+## The Execute Parameter
 
-### Examples
-#### a simple unit test
-![a simple unit test](doc/img/example01.png)
+One can control in detail what code is executed prior to a test. Therefore, the `execute` parameter accepts different
+types, which can also be nested recursively:
 
-```python
-# Mark as unit test and execute the cell with the tag `task-1`
-# prior to this test function.
-@JPTest('Task 1', max_score=2.0, execute=('task-1',))
-def test_task1(tb: JPTestBook):
-    # Use `ref` to reference an object or function from
-    # the notebook.
-    fib_from_nb = tb.ref('fib')
-
-    # Grant points if output matches.
-    yield fib_from_nb(0) == 0, 0.5
-    yield fib_from_nb(1) == 1, 0.5
-    yield fib_from_nb(2) == 1, 0.5
-    yield fib_from_nb(20) == 6765, 0.5
-```
-
-#### independent grading
-![independent grading](doc/img/example02.png)
-
-```python
-@JPTest('Task 2', max_score=1.0, execute=[
-    # Inject a correct `fib` function instead of executing the
-    # cell with the tag `task-1`.
-    '''
-    def fib(n):
-        if n <= 1:
-            return n
-        else:
-            return fib(n-1) + fib(n-2)
-    ''',
-    # Execute the cell with the tag `task-2` only.
-    ('task-2',)
-])
-def test_task2(tb: JPTestBook):
-    yield tb.ref('fib_list') == [0, 1, 1, 2, 3, 5, 8, 13, 21, 34], 1.0
-```
-
-#### track function calls
-```python
-@JPTest('Bonus Point', max_score=2.0, execute=('task-1',))
-def test_recursive(tb: JPTestBook):
-    fib_from_nb = tb.ref('fib')
-
-    # Track calls of `fib` function and store them into `params`
-    # after the context manager's `__exit__` function is executed.
-    with tb.track('fib') as params:
-        fib_from_nb(20)
-
-    # Award a bonus point if the function is recursive.
-    yield len(params) > 1000, 1.0, None, 'recursion... neat!'
-```
-
-#### equality functions
-![equality functions](doc/img/example03.png)
-
-Some objects like pandas dataframes are neither serializable nor comparable via `==`. One can call functions like `equals` on references instead.
-
-```python
-@JPTest('Task 3', max_score=2.0, execute=('task-3',))
-def test_task3(tb: JPTestBook):
-    # Store `df` with a random suffix and get a reference.
-    result = tb.get('df')
-
-    # Inject sample solution and get a reference.
-    test = tb.inject('df = pd.read_csv("data.csv", ...)', 'df')
-
-    # Call `equals` function on one of the dataframes.
-    yield test.equals(result), 1.0
-
-    # This also works with imported modules.
-    # yield, tb.ref('nx').could_be_isomorphic(test, result), 1.0
-```
-
-
-## Execute Parameter
-One can control in detail what code is executed prior to a test. Therefore the `execute` parameter accepts different types, which can also be nested recursively.
-
-#### String
+**String.**
 If the parameter is of type `str`, the value is considered as code and injected into the notebook.
 
-#### Tuple
-If the parameter is of type `tuple`, the value is considered as tags. If there is one element in the tuple, every cell with this tag is executed. If there are two elements in the tuple, every cell between the first appearence of the first tag and the first appearence of the second tag (including) is executed.
+**Tuple.**
+If the parameter is of type `tuple`, the value is considered as tags. If there is one element in the tuple, every cell
+with this tag is executed. If there are two elements in the tuple, every cell between the first appearance of the first
+tag and the first appearence of the second tag (including) is executed.
 
-#### Dictionary
-If the parameter is of type `dict`, it must include a key named `execute`, which value is executed following the rules stated in this section.
+**Function.**
+If the parameter is a function (`Callable`), it will be executed in the notebook context using `execute_fun`.
 
-It may include a key named `track`, which value is another dictionary with function names as key and a tuple or a list of tuples containing the parameters to track. The result is passed to the test function as a parameter in the order of the execution.
+**List.**
+If the parameter is of type `list`, every element will be executed in the order of its appearence, following the rules
+stated above. Even though it is not actually needed because of list operations in Python, nested statements are possible
+with it.
 
-#### Function
-If the parameter is a function (`Callable`), it will be called with the JPTestBook object as a parameter.
+## Execute Code
 
-#### List
-If the parameter is of type `list`, every element will be executed in the order of its appearence, following the rules stated above.
+## References
+
+## Annotations and Parameters
+
+Previously you have already seen the annotation `@JPTest`. It has two additional optional parameters. `timeout`
+specifies a timeout in seconds **per cell**. As you may have noticed, the notebook is passed as a parameter to the test
+function **after** the `execute` parameter is executed. You can set `prepare_second` to `True` to get a second notebook
+with the same settings as a second parameter.
+
+```python
+@JPTest('Task 1', max_score=1, execute=('task-1',), prepare_second=True)
+async def test_task1(nb1: Notebook, nb2: Notebook):
+    # `nb1` equals `nb2`, but they were created and prepared independently!
+    pass
+```
+
+Furthermore, there is `@JPTestGet` if you are only interested in data stored within the notebook. To this annotation
+you pass a name, a maximum score, a timeout and an execute command. It further accepts a list of names that are
+variables inside the notebook. All of these are transferred to the test context and used as parameters for your test
+function. You can not access the notebook using this annotation!
+
+```python
+@JPTestGet('Task 1', max_score=1, execute=('task-1',), get=['first_var', 'second_var'])
+async def test_task1(first_value, second_value):
+    # `first_value` and `second_value` are the received values.
+    pass
+```
+
+The last annotation is `@JPTestComparison`. It allows using two notebooks prepared in different ways inside the test
+function. We use this mainly to compare the student's results with those from a sample solution.
+
+```python
+def import_pandas():
+    # noinspection PyUnresolvedReferences
+    import pandas as pd
+
+def sample_solution():
+    correct_df = pd.read_csv('my_dataset.csv')
+
+# Everything passed to `prepare` is executed in both notebooks.
+# Everything passed to `execute_left` is executed in the first notebook.
+# `execute_right` does the same in the second notebook.
+# `hold_left` expects a list of variable names to copy to the test context
+# from the first notebook. `hold_right` does the same to the second notebook.
+# Every received value is used as a parameter for the test function.
+@JPTestComparison('Task 1', max_score=1, execute=import_pandas,
+                  prepare_left=('task-1',), hold_left='students_df',
+                  prepare_right=sample_solution, hold_right='correct_df')
+async def test_task1(students_val, correct_val):
+    pass
+```
+
+## Function Injection
+
+## Function Replacing
+
+## Function Tracking
+
+## Output Formats
+
+## Parallelization
+
+- less inter process communication
+- prepare in parallel
+- use static functions in notebook reference
+- Tuning via -proc
+
+## Running Without Tests

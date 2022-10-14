@@ -5,7 +5,7 @@ import sys
 from argparse import ArgumentParser
 from asyncio import Semaphore
 
-from jptest2 import JPTest, JPPreRun, JPPostRun
+from jptest2 import JPTest, JPSetup, JPTeardown
 
 
 async def main():
@@ -40,8 +40,8 @@ async def main():
     if args.verbose:
         print('pre run', file=sys.stderr)
 
-    if len(JPPreRun.FN) > 0:
-        await asyncio.gather(*[f() for f in JPPreRun.FN])
+    if len(JPSetup.FN) > 0:
+        await asyncio.gather(*[f() for f in JPSetup.FN])
 
     # filter and execute tests
     proc: Semaphore = Semaphore(args.tests)
@@ -57,8 +57,8 @@ async def main():
     if args.verbose:
         print('post run', file=sys.stderr)
 
-    if len(JPPostRun.FN) > 0:
-        await asyncio.gather(*[f() for f in JPPostRun.FN])
+    if len(JPTeardown.FN) > 0:
+        await asyncio.gather(*[f() for f in JPTeardown.FN])
 
     # print output
     if args.quiet:  # quiet
