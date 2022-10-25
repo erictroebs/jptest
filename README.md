@@ -15,7 +15,8 @@ python -m venv venv
 source venv/bin/activate
 ```
 
-Use `pip` to download and install JPTest:
+Use `pip` to download and install JPTest. Make sure not to install the first version JPTest, which is missing the `2`
+at the end of the package name, as it is only available for compatibility reasons.
 
 ```bash
 pip install jptest2
@@ -27,6 +28,7 @@ simple test could look like the following example:
 
 ```python
 from jptest2 import *
+
 
 # Create test with name "Task 1" and a maximum score of 1.
 # Execute *all* cells with tag "task-1" prior to executing the test function.
@@ -57,9 +59,21 @@ following command:
 python -m jptest2 notebook.ipynb tests.py
 ```
 
+Please note the test function is an `async` function!
+
 ## Contexts and Processes
 
-- Notebook and Test Context
+JPTest manages different processes. The first process that is started collects all annotations like `@JPTest` and
+stores them together with their respecting test functions. Later, this process will control the startup of notebooks
+and take over the evaluation. We refer to this process as the test context.
+
+Jupyter uses kernels that are started in a separate process. JPTest only supports Python3 kernels and does not share
+them between tests, so for each test at least one independent kernel process is started to run the contents of the
+notebook. However, as we will see later, it is also possible to start multiple kernels per test. We refer to this set
+of processes as the notebook context.
+
+JPTest always runs on an in-memory copy of the notebook and does not modify files, but tests and code in the notebook
+still have the possibility to do so.
 
 ## The Execute Parameter
 
@@ -84,7 +98,74 @@ with it.
 
 ## Execute Code
 
+The easiest way to execute code in the notebook is via the `cells` property. It returns a list of all cells present in
+the notebook and allows to filter and execute them one by one.
+
+```python
+for cell in nb.cells:
+    print(cell.tags)
+
+    if cell.type == 'code':
+        await cell.execute()
+```
+
+The function `execute_cells` represents a shortcut to select only code cells by tags prior to executing them in their
+order of appearance.
+
+```python
+# execute all cells with tag `task-1`
+await nb.execute_cells('task-1')
+
+# execute all cells from `task-3` to `task-5`
+await nb.execute_cells(from_tag='task-3', to_tag='task-5')
+```
+
+It is also possible to inject code into the notebook context. `execute_code` creates a new code cell from the given
+string, inserts it at the end of the notebook and executes it. Additional indentation of otherwise correct code is
+possible.
+
+```python
+await nb.execute_code('''
+    a = 5
+    b = 10
+''')
+```
+
 ## References
+
+It is possible to interact with objects and code in the notebook context. The most important class in this regard is
+`NotebookReference`. References are returned, for example, by the `ref` and `get` functions, represent objects in the
+notebook context and may be used for interaction in various ways:
+
+- `receive` serializes the referenced object and transfers it from the notebook context to the test context. `execute`,
+  on the other hand, executes a statement without processing the result and transferring it to the test context.
+- Access to an object's attributes or items is possible with the usual syntax. Note that the result is not evaluated
+  immediately and thus errors due to missing attributes or keys are carried over until the actual execution.
+- References may be called like functions. The parameters are either other references, then these are resolved within
+  the notebook context, or local variables from the test context, then these are transferred into the notebook context
+  and used for the call. Function calls are also not executed immediately.
+- For references to lists and other sequences there is a function `len` to determine the length. The built-in `len`
+  function, however, cannot be used with the `async`/`await` syntax.
+
+```python
+my_fun_in_nb = nb.my_fun
+my_fun_return = my_fun_in_nb()
+
+my_dict_in_nb = nb.my_dict
+val_of_x = my_dict_in_nb['x']
+
+# Raises an exception if `my_fun` does not exist
+# or raises an exception itself.
+print(await my_fun_return.receive())
+
+# Raises an exception if `my_dict` does not `x` is not a key in `my_dict`.
+print(await val_of_x.receive())
+```
+
+Pickle is used to serialize and deserialize objects. Therefore, it is also possible to transfer more complex objects
+like Pandas DataFrames or NumPy Arrays.
+
+References to a notebook's objects cannot be used as parameters to call a function within another notebook.
 
 ## Annotations and Parameters
 
@@ -120,10 +201,12 @@ def import_pandas():
     # noinspection PyUnresolvedReferences
     import pandas as pd
 
+
 def sample_solution():
     correct_df = pd.read_csv('my_dataset.csv')
 
-# Everything passed to `prepare` is executed in both notebooks.
+
+# Everything passed to `prepare` is executed in both notebooks independently.
 # Everything passed to `execute_left` is executed in the first notebook.
 # `execute_right` does the same in the second notebook.
 # `hold_left` expects a list of variable names to copy to the test context
@@ -138,17 +221,120 @@ async def test_task1(students_val, correct_val):
 
 ## Function Injection
 
+There are two ways to inject functions:
+
+The first method `execute_fun` transfers a function to the notebook context and returns a reference. This can be called
+as described
+before or passed as a parameter to another function.
+
+```python
+def fun(i: int):
+    k = i + 1
+
+
+# `i` has to be available in the notebook context!
+await nb.execute_fun(fun)
+
+# `k` is defined globally in the notebook context
+# after the execution.
+```
+
+The second method `inject_fun` executes a function's body in the notebook context while the header is only used in the
+test context.
+This makes it possible to write syntactically correct code with alle benefits of analysis within an IDE, although it
+is later executed in the notebook context.
+
+```python
+def fun(i: int):
+    return i + 1
+
+
+injected = await nb.inject_fun(fun)
+result = await injected(5).receive()
+
+# `result` equals `6`.
+```
+
 ## Function Replacing
+
+Functions in the notebook context can be replaced with others, for example to skip network requests and return a fixed
+response instead to speed them up.
+
+```python
+await nb.execute_code('''
+    from time import sleep
+
+    def my_fun():
+        sleep(10)
+        return 1                
+''')
+
+
+def replacement():
+    return 2
+
+
+async with nb.replace_fun('my_fun', replacement):
+    # executes `replacement` in notebook context.
+    result = await nb.ref('my_fun')().receive()
+    # prints `2`
+    print(result)
+```
 
 ## Function Tracking
 
+Furthermore, it is possible to track function calls. This may be used to check if an implementation uses recursion.
+In addition, the parameters and return values used can be extracted.
+
+```python
+await nb.execute_code('''
+    def fib(i):
+        return i if i <= 1 else fib(i-1) + fib(i-2)
+''')
+
+async with nb.track_fun('fib') as calls:
+    await nb.ref('fib')(15).execute()
+
+print(len(await calls.receive()) > 1000)
+```
+
+## Setup and Teardown Methods
+
+Use `@JPSetup` and `@JPTeardown` to annotate `async` functions. Setup functions are run prior to all tests and teardown
+functions after all tests have completed.
+
+```python
+@JPSetup
+async def setup():
+    print('setup')
+
+
+@JPTeardown
+async def teardown():
+    print('teardown')
+```
+
+Multiple setup or teardown functions are run in parallel.
+
 ## Output Formats
+
+The default output format is JSON. You can switch it to Markdown using the command line flag `--md`.
 
 ## Parallelization
 
-- less inter process communication
-- prepare in parallel
-- use static functions in notebook reference
-- Tuning via -proc
+Since all notebook kernels are started in different processes, multicore processors can be fully utilized. However,
+there are a few things to keep in mind:
+
+- The test context can become a bottleneck because it uses only one thread. Therefore, the notebooks should work as
+  independently as possible and the test context should only be used for coordination and evaluation.
+- Keep inter-process communication to a minimum and outsource computationally intensive operations to the notebook
+  context.
+- Use the parameter `--tests` to limit the number of concurrently running tests.
 
 ## Running Without Tests
+
+If no test file is given on startup, JPTest will choose a default test set. It executes all cells once in the correct
+order, does not score and passes exceptions. This can be used to check notebooks for syntax errors, determine if
+libraries are missing within an image or if data sets have not been shipped.
+
+Use the command line parameter `--quiet` to suppress any output other than exceptions and stacktraces.

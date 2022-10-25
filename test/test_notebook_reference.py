@@ -41,6 +41,7 @@ async def test_receive():
 
 @pytest.mark.asyncio
 async def test_reference_call():
+    # receive
     async with Notebook('references.ipynb') as nb:
         await nb.execute_cells('create', 'objects')
 
@@ -70,6 +71,29 @@ async def test_reference_call():
         # kwargs: call with local parameter
         result = await nb_fun(nb_a, nb_c, replace_second=lo_b).receive()
         assert result == (lo_b, lo_a)
+
+    # execute
+    async with Notebook('references.ipynb') as nb:
+        await nb.execute_cells('create', 'objects')
+
+        nb_fun = nb.ref('nb_swap')
+        nb_a, nb_b, nb_c = nb.refs('a', 'b', 'c')
+        lo_a, lo_b, lo_c = 1, 2, 3
+
+        # args: call with notebook parameters
+        await nb_fun(nb_a, nb_c).execute()
+
+        # args: call with local parameters
+        await nb_fun(lo_a, lo_c).execute()
+
+        # args: call with mixed parameters
+        await nb_fun(nb_a, lo_c).execute()
+
+        # kwargs: call with notebook parameter
+        await nb_fun(nb_a, nb_c, replace_second=nb_b).execute()
+
+        # kwargs: call with local parameter
+        await nb_fun(nb_a, nb_c, replace_second=lo_b).execute()
 
 
 @pytest.mark.asyncio

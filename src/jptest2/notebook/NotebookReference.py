@@ -77,7 +77,10 @@ class NotebookReference:
         return await self._nb.ref(f'len({self.name})').receive()
 
     async def execute(self) -> NotebookCell:
-        return await self._nb.execute_code(self.name)
+        return await self._nb.execute_code(f'''
+            import pickle
+            {self.name}
+        ''')
 
     @staticmethod
     async def execute_many(*references: "NotebookReference"):
