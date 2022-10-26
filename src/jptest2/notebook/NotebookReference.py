@@ -1,7 +1,7 @@
 import asyncio
 import base64
 import pickle
-from typing import Any
+from typing import Any, Union
 
 from . import Notebook, NotebookCell
 from .util import randomize_name
@@ -12,13 +12,25 @@ class NotebookReference:
     represents references to object in notebook
     """
 
-    def __init__(self, nb: Notebook, name: str, resolved: bool = True):
-        self._nb: Notebook = nb
+    def __init__(self, parent, name: str = None):
+        self._parent: Union[Notebook, NotebookReference] = parent
         self._name: str = name
-        self._resolved: bool = resolved
+
+    @property
+    def _nb(self) -> Notebook:
+        if isinstance(self._parent, NotebookReference):
+            return self._parent._nb
+        else:
+            return self._parent
 
     @property
     def name(self) -> str:
+        if self._name is None:
+            return self._parent.name
+        else:
+            return self._name
+
+    async def _resolve(self) -> str:
         return self._name
 
     async def copy(self) -> "NotebookReference":
@@ -28,26 +40,17 @@ class NotebookReference:
         :return: NotebookReference
         """
         random_name = randomize_name(self.name)
-        await self._nb.execute_code(f'{random_name} = {self.name}')
+        await self._nb.execute_code(f'{random_name} = {await self._resolve()}')
 
-        return NotebookReference(self._nb, random_name, self._resolved)
+        return NotebookReference(self._nb, random_name)
 
-    @staticmethod
-    def _encode(var):
-        if isinstance(var, NotebookReference):
-            return var.name
-        else:
-            val = pickle.dumps(var)
-            return f'pickle.loads({val})'
+    def __getitem__(self, key) -> "NotebookItemReference":
+        return NotebookItemReference(self, key)
 
-    def __getitem__(self, key) -> "NotebookReference":
-        val = pickle.dumps(key)
-        return self._nb.ref(f'{self.name}[pickle.loads({val})]')
+    def __getattr__(self, key) -> "NotebookAttributeReference":
+        return NotebookAttributeReference(self, key)
 
-    def __getattr__(self, key) -> "NotebookReference":
-        return self._nb.ref(f'{self.name}.{key}')
-
-    def __call__(self, *args, **kwargs) -> "NotebookReference":
+    def __call__(self, *args, **kwargs) -> "NotebookCallReference":
         """
         call function in notebook context
 
@@ -55,18 +58,7 @@ class NotebookReference:
         :param kwargs:
         :return: NotebookReference to result
         """
-        # encode parameters
-        call_args = []
-
-        for v in args:
-            call_args.append(self._encode(v))
-        for k, v in kwargs.items():
-            e = self._encode(v)
-            call_args.append(f'{k}={e}')
-
-        # create parameter string and return reference
-        call_str = ',\n                '.join(call_args)
-        return self._nb.ref(f'{self._name}({call_str})')
+        return NotebookCallReference(self, *args, **kwargs)
 
     async def len(self) -> int:
         """
@@ -74,12 +66,12 @@ class NotebookReference:
 
         :return: `len(obj)`
         """
-        return await self._nb.ref(f'len({self.name})').receive()
+        return await self._nb.ref(f'len({await self._resolve()})').receive()
 
     async def execute(self) -> NotebookCell:
         return await self._nb.execute_code(f'''
             import pickle
-            {self.name}
+            {await self._resolve()}
         ''')
 
     @staticmethod
@@ -94,7 +86,7 @@ class NotebookReference:
         """
         result, o, e, p = (await self._nb.execute_code(f'''
             import pickle, base64
-            base64.b64encode(pickle.dumps({self.name})).decode('ascii')
+            base64.b64encode(pickle.dumps({await self._resolve()})).decode('ascii')
         ''')).output()
 
         for mime, value in result:
@@ -107,3 +99,66 @@ class NotebookReference:
     @staticmethod
     async def receive_many(*references: "NotebookReference"):
         return await asyncio.gather(*[ref.receive() for ref in references])
+
+
+class NotebookItemReference(NotebookReference):
+    def __init__(self, parent, key: Any):
+        super().__init__(parent)
+        self._key: Any = key
+
+    async def _encode(self):
+        return pickle.dumps(self._key)
+
+    async def _resolve(self) -> str:
+        val, key = await asyncio.gather(
+            self._parent._resolve(),
+            self._encode()
+        )
+
+        return f'{val}[pickle.loads({key})]'
+
+
+class NotebookAttributeReference(NotebookReference):
+    def __init__(self, parent, key: str):
+        super().__init__(parent)
+        self._key: str = key
+
+    async def _resolve(self) -> str:
+        val = await self._parent._resolve()
+        return f'{val}.{self._key}'
+
+
+class NotebookCallReference(NotebookReference):
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent)
+        self._args = args
+        self._kwargs = kwargs
+
+    async def _encode_arg(self, arg) -> str:
+        if isinstance(arg, NotebookReference):
+            if arg._nb == self._nb:
+                return await arg._resolve()
+            else:
+                arg = await arg.receive()
+
+        val = pickle.dumps(arg)
+        return f'pickle.loads({val})'
+
+    async def _encode_kwarg(self, key: str, arg) -> str:
+        val = await self._encode_arg(arg)
+        return f'{key}={val}'
+
+    async def _resolve(self) -> str:
+        # collect parameters
+        call_args = []
+
+        for v in self._args:
+            call_args.append(self._encode_arg(v))
+        for k, v in self._kwargs.items():
+            call_args.append(self._encode_kwarg(k, v))
+
+        # create parameter string and return reference
+        parent, *call_args = await asyncio.gather(self._parent._resolve(), *call_args)
+
+        call_str = ',\n                '.join(call_args)
+        return f'{parent}({call_str})'

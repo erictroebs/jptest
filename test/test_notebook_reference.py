@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from jptest2.notebook import Notebook
@@ -121,3 +123,56 @@ async def test_len():
 
         nb_list_len = await nb.ref('nb_list').len()
         assert nb_list_len == 4
+
+
+@pytest.mark.asyncio
+async def test_copy():
+    async with Notebook('references.ipynb') as nb:
+        await nb.execute_cells('objects')
+
+        # simple name
+        nb_list = await nb.ref('nb_list').copy()
+        await nb.execute_code('nb_list = 3.142')
+
+        r1 = await nb_list.receive()
+        assert r1 == [1, 'a', None, 'b']
+
+        r2 = await nb.ref('nb_list').receive()
+        assert r2 == 3.142
+
+        # property
+        nb_obj = await nb.ref('nb_obj').key.copy()
+        await nb.execute_code('nb_obj.key = "changed"')
+
+        r3 = await nb_obj.receive()
+        assert r3 == 'val'
+
+        r4 = await nb.ref('nb_obj').key.receive()
+        assert r4 == 'changed'
+
+
+@pytest.mark.asyncio
+async def test_transfer_between_notebooks():
+    async with \
+            Notebook('references.ipynb') as nb1, \
+            Notebook('references.ipynb') as nb2:
+        await asyncio.gather(
+            nb1.execute_cells('create', 'primitives'),
+            nb2.execute_cells('objects')
+        )
+
+        nb1_fun = nb1.ref('nb_swap')
+
+        # pick a var from `nb2` that is _not_ available in `nb1`
+        nb1_a, nb2_obj = nb1.ref('a'), nb2.ref('nb_obj')
+
+        result = await nb1_fun(nb1_a, nb2_obj).receive()
+        assert result == (await nb2_obj.receive(), await nb1_a.receive())
+
+        # pick a var from `nb2` that is available in `nb1`
+        await nb2.execute_code('nb_int = 3072')
+
+        nb1_a, nb2_int = nb1.ref('a'), nb2.ref('nb_int')
+
+        result = await nb1_fun(nb1_a, nb2_int).receive()
+        assert result == (await nb2_int.receive(), await nb1_a.receive())

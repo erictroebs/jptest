@@ -165,7 +165,9 @@ print(await val_of_x.receive())
 Pickle is used to serialize and deserialize objects. Therefore, it is also possible to transfer more complex objects
 like Pandas DataFrames or NumPy Arrays.
 
-References to a notebook's objects cannot be used as parameters to call a function within another notebook.
+References to a notebook's objects can be used as parameters to call a function within another notebook. JPTest will
+transfer the value to the notebook containing the function prior to calling it. This means the used reference has to be
+serializable.
 
 ## Annotations and Parameters
 
