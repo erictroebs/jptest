@@ -15,7 +15,7 @@ python -m venv venv
 source venv/bin/activate
 ```
 
-Use `pip` to download and install JPTest. Make sure not to install the first version JPTest, which is missing the `2`
+Use `pip` to download and install JPTest. Make sure not to install the first version of JPTest, which is missing the `2`
 at the end of the package name, as it is only available for compatibility reasons.
 
 ```bash
@@ -60,6 +60,21 @@ python -m jptest2 notebook.ipynb tests.py
 ```
 
 Please note the test function is an `async` function!
+
+## Table of Contents
+
+- [Contexts and Processes](contexts-and-processes)
+- [The Execute Parameter](the-execute-parameter )
+- [Execute Code](execute-code)
+- [References](references)
+- [Annotations and Parameters](annotations-and-parameters)
+- [Function Injection](function-injection)
+- [Function Replacing](function-replacing)
+- [Function Tracking](function-tracking)
+- [Setup and Teardown Methods](setup-and-teardown-methods)
+- [Output Formats](output-formats)
+- [Parallelization](parallelization)
+- [Running Without Tests](running-without-tests)
 
 ## Contexts and Processes
 
