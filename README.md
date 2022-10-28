@@ -131,6 +131,14 @@ await nb.execute_code('''
 ''')
 ```
 
+Please note that there are functions `store` and `stores` to store values in the notebook. Unlike the previous example
+this also works with non-primitive types.
+
+```python
+await nb.store('a', 5)
+await nb.stores(b=10, c={'tiger': 'dangerous'})
+```
+
 ## References
 
 It is possible to interact with objects and code in the notebook context. The most important class in this regard is
@@ -225,8 +233,26 @@ async def test_task1(students_val, correct_val):
 
 There are two ways to inject functions:
 
-The first method `execute_fun` transfers a function to the notebook context and returns a reference. This can be called
+The first method `inject_fun` transfers a function to the notebook context and returns a reference. This can be called
 as described before or passed as a parameter to another function.
+
+```python
+def fun(i: int):
+  return i + 1
+
+
+injected = await nb.inject_fun(fun)
+result = await injected(5).receive()
+
+# `result` equals `6`.
+```
+
+You can also send classes to the notebook context. But there is no way to transfer needed superclasses automatically
+as well.
+
+The second method `execute_fun` executes a function's body in the notebook context while the header is only used in the
+test context. This makes it possible to write syntactically correct code with alle benefits of analysis within an IDE,
+although it is later executed in the notebook context.
 
 ```python
 def fun(i: int):
@@ -238,24 +264,6 @@ await nb.execute_fun(fun)
 
 # `k` is defined globally in the notebook context
 # after the execution.
-```
-
-You can also send classes to the notebook context. But there is no way to transfer needed superclasses automatically
-as well.
-
-The second method `inject_fun` executes a function's body in the notebook context while the header is only used in the
-test context. This makes it possible to write syntactically correct code with alle benefits of analysis within an IDE,
-although it is later executed in the notebook context.
-
-```python
-def fun(i: int):
-  return i + 1
-
-
-injected = await nb.inject_fun(fun)
-result = await injected(5).receive()
-
-# `result` equals `6`.
 ```
 
 ## Function Replacing

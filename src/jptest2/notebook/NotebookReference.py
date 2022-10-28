@@ -69,6 +69,11 @@ class NotebookReference:
         return await self._nb.ref(f'len({await self._resolve()})').receive()
 
     async def execute(self) -> NotebookCell:
+        """
+        execute the underlying statement in the notebook context
+
+        :return: inserted notebook cell
+        """
         return await self._nb.execute_code(f'''
             import pickle
             {await self._resolve()}

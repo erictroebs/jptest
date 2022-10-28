@@ -23,10 +23,20 @@ class NotebookCell:
 
     @property
     def type(self) -> str:
+        """
+        cell type
+
+        :return:
+        """
         return self._cell['cell_type']
 
     @property
     def tags(self) -> List[str]:
+        """
+        list of tags
+
+        :return:
+        """
         if 'tags' in self._cell['metadata']:
             return self._cell['metadata']['tags']
         else:

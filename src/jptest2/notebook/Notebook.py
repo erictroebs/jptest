@@ -165,6 +165,13 @@ class Notebook:
         return result
 
     async def store(self, name: str, value: Any) -> NotebookReference:
+        """
+        store a value in the notebook context
+
+        :param name: variable name in notebook
+        :param value: variable value in notebook
+        :return: reference to created variable
+        """
         encoded_value = pickle.dumps(value)
         await self.execute_code(f'''
             import pickle
@@ -172,6 +179,15 @@ class Notebook:
         ''')
 
         return self.ref(name)
+
+    async def stores(self, **kwargs) -> Tuple[NotebookReference, ...]:
+        """
+        store multiple values in the notebook context
+
+        :param kwargs:
+        :return: tuple of references
+        """
+        return await asyncio.gather(*[self.store(k, v) for k, v in kwargs.items()])
 
     async def execute_fun(self, fun: Callable) -> NotebookCell:
         """
