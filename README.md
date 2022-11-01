@@ -147,11 +147,13 @@ await nb.execute_code('''
 ```
 
 Please note that there are functions `store` and `stores` to store values in the notebook. Unlike the previous example
-this also works with non-primitive types.
+this also works with non-primitive types and references.
 
 ```python
 ref1 = await nb.store(5, 'a')
 ref2 = await nb.store(6)
+await nb.store(ref1, 'copy_of_ref1')
+
 ref3, ref4 = await nb.stores(b=10, c={'tiger': 'dangerous'})
 ```
 

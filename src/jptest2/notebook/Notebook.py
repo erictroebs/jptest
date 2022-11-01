@@ -170,7 +170,8 @@ class Notebook:
     # When using a reference from another notebook, we do not need to deserialize it.
     async def store(self, value: Any, name: str = None) -> NotebookReference:
         """
-        store a value in the notebook context
+        store a value in the notebook context.
+        A random name is chosen if no custom name is given.
 
         :param value: variable value in notebook
         :param name: variable name in notebook
