@@ -150,8 +150,9 @@ Please note that there are functions `store` and `stores` to store values in the
 this also works with non-primitive types.
 
 ```python
-await nb.store('a', 5)
-await nb.stores(b=10, c={'tiger': 'dangerous'})
+ref1 = await nb.store(5, 'a')
+ref2 = await nb.store(6)
+ref3, ref4 = await nb.stores(b=10, c={'tiger': 'dangerous'})
 ```
 
 ## References

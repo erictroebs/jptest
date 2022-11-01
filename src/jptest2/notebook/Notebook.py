@@ -13,6 +13,7 @@ from .NotebookCell import NotebookCell
 from .NotebookFunctionReplacement import NotebookFunctionReplacement
 from .NotebookFunctionWrapper import NotebookFunctionWrapper
 from .NotebookReference import NotebookReference
+from .util import randomize_name
 
 
 class Notebook:
@@ -164,20 +165,39 @@ class Notebook:
 
         return result
 
-    async def store(self, name: str, value: Any) -> NotebookReference:
+    # TODO performance improvements needed
+    # When using a reference from the same notebook, we should not download and upload it.
+    # When using a reference from another notebook, we do not need to deserialize it.
+    async def store(self, value: Any, name: str = None) -> NotebookReference:
         """
         store a value in the notebook context
 
-        :param name: variable name in notebook
         :param value: variable value in notebook
+        :param name: variable name in notebook
         :return: reference to created variable
         """
+        # extract a name if no custom name given
+        if name is None:
+            # from reference
+            if isinstance(value, NotebookReference):
+                name = value.name
+
+            # random name
+            else:
+                name = randomize_name('stored')
+
+        # download references
+        if isinstance(value, NotebookReference):
+            value = await value.receive()
+
+        # encode value and store
         encoded_value = pickle.dumps(value)
         await self.execute_code(f'''
             import pickle
             {name} = pickle.loads({encoded_value})
         ''')
 
+        # return reference
         return self.ref(name)
 
     async def stores(self, **kwargs) -> Tuple[NotebookReference, ...]:
@@ -187,7 +207,7 @@ class Notebook:
         :param kwargs:
         :return: tuple of references
         """
-        return await asyncio.gather(*[self.store(k, v) for k, v in kwargs.items()])
+        return await asyncio.gather(*[self.store(v, k) for k, v in kwargs.items()])
 
     async def execute_fun(self, fun: Callable) -> NotebookCell:
         """

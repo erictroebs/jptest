@@ -88,13 +88,15 @@ async def test_execute_code():
 
 @pytest.mark.asyncio
 async def test_store():
-    async with Notebook('execute_code.ipynb') as nb:
+    async with \
+            Notebook('execute_code.ipynb') as nb, \
+            Notebook('execute_code.ipynb') as nb2:
         # store
         val = {
             'a': 1,
             'b': [2, 'c']
         }
-        ref = await nb.store('new_value', val)
+        ref = await nb.store(val, 'new_value')
         assert ref.name == 'new_value' and await ref.receive() == val
 
         # stores
@@ -104,6 +106,20 @@ async def test_store():
         ref1, ref2 = await nb.stores(v1=val1, v2=val2)
         assert ref1.name == 'v1' and await ref1.receive() == val1
         assert ref2.name == 'v2' and await ref2.receive() == val2
+
+        # store reference
+        ref3 = await nb.store(ref1)
+        assert ref3.name == 'v1' and await ref3.receive() == val1
+
+        ref4 = await nb.store(ref2, 'custom_name')
+        assert ref4.name == 'custom_name' and await ref4.receive() == val2
+
+        # store reference from second notebook
+        val3 = [5, 4, 3, 2, 1]
+        ref5 = await nb2.store(val3)
+
+        ref6 = await nb.store(ref5)
+        assert ref6.name == ref5.name and await ref6.receive() == val3
 
 
 @pytest.mark.asyncio

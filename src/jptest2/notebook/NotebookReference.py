@@ -139,6 +139,8 @@ class NotebookCallReference(NotebookReference):
         self._args = args
         self._kwargs = kwargs
 
+    # TODO performance improvements needed
+    # When using a reference from another notebook, we do not need to deserialize it.
     async def _encode_arg(self, arg) -> str:
         if isinstance(arg, NotebookReference):
             if arg._nb == self._nb:
