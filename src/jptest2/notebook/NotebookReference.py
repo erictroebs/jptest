@@ -33,16 +33,21 @@ class NotebookReference:
     async def _resolve(self) -> str:
         return self._name
 
-    async def copy(self) -> "NotebookReference":
-        """
-        copy object to a random name and return a new reference
+    def is_from(self, nb: Notebook):
+        return nb == self._nb
 
+    async def copy(self, name: str = None) -> "NotebookReference":
+        """
+        copy object to a new name and return a new reference
+
+        :param name: the new name. random one is used if not provided
         :return: NotebookReference
         """
-        random_name = randomize_name(self.name)
-        await self._nb.execute_code(f'{random_name} = {await self._resolve()}')
+        if name is None:
+            name = randomize_name(self.name)
 
-        return NotebookReference(self._nb, random_name)
+        await self._nb.execute_code(f'{name} = {await self._resolve()}')
+        return NotebookReference(self._nb, name)
 
     def __getitem__(self, key) -> "NotebookItemReference":
         return NotebookItemReference(self, key)
@@ -83,7 +88,7 @@ class NotebookReference:
     async def execute_many(*references: "NotebookReference"):
         return await asyncio.gather(*[ref.execute() for ref in references])
 
-    async def receive(self) -> Any:
+    async def receive(self, deserialize: bool = True) -> Any:
         """
         serialize, transfer and deserialize referenced object from notebook context
 
@@ -98,8 +103,12 @@ class NotebookReference:
             if mime != 'text/plain':
                 continue
 
-            result_value = pickle.loads(base64.b64decode(value.encode('ascii')))
-            return result_value
+            value = base64.b64decode(value.encode('ascii'))
+
+            if deserialize:
+                value = pickle.loads(value)
+
+            return value
 
     @staticmethod
     async def receive_many(*references: "NotebookReference"):
@@ -139,17 +148,16 @@ class NotebookCallReference(NotebookReference):
         self._args = args
         self._kwargs = kwargs
 
-    # TODO performance improvements needed
-    # When using a reference from another notebook, we do not need to deserialize it.
     async def _encode_arg(self, arg) -> str:
+        # transfer references if not from same notebook
         if isinstance(arg, NotebookReference):
-            if arg._nb == self._nb:
-                return await arg._resolve()
-            else:
-                arg = await arg.receive()
+            if not arg.is_from(self._nb):
+                arg = await self._nb.store(arg)
+        # store local values in notebook
+        else:
+            arg = await self._nb.store(arg)
 
-        val = pickle.dumps(arg)
-        return f'pickle.loads({val})'
+        return await arg._resolve()
 
     async def _encode_kwarg(self, key: str, arg) -> str:
         val = await self._encode_arg(arg)

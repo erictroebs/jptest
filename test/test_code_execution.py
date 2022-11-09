@@ -104,12 +104,12 @@ async def test_store():
         val2 = {'ex': 'ample'}
 
         ref1, ref2 = await nb.stores(v1=val1, v2=val2)
-        assert ref1.name == 'v1' and await ref1.receive() == val1
-        assert ref2.name == 'v2' and await ref2.receive() == val2
+        assert await ref1.receive() == val1
+        assert await ref2.receive() == val2
 
         # store reference
         ref3 = await nb.store(ref1)
-        assert ref3.name == 'v1' and await ref3.receive() == val1
+        assert await ref3.receive() == val1
 
         ref4 = await nb.store(ref2, 'custom_name')
         assert ref4.name == 'custom_name' and await ref4.receive() == val2
@@ -119,7 +119,7 @@ async def test_store():
         ref5 = await nb2.store(val3)
 
         ref6 = await nb.store(ref5)
-        assert ref6.name == ref5.name and await ref6.receive() == val3
+        assert await ref6.receive() == val3
 
 
 @pytest.mark.asyncio

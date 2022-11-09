@@ -165,9 +165,6 @@ class Notebook:
 
         return result
 
-    # TODO performance improvements needed
-    # When using a reference from the same notebook, we should not download and upload it.
-    # When using a reference from another notebook, we do not need to deserialize it.
     async def store(self, value: Any, name: str = None) -> NotebookReference:
         """
         store a value in the notebook context.
@@ -177,22 +174,25 @@ class Notebook:
         :param name: variable name in notebook
         :return: reference to created variable
         """
-        # extract a name if no custom name given
+        # choose a random name if no custom name is provided
         if name is None:
-            # from reference
-            if isinstance(value, NotebookReference):
-                name = value.name
+            name = randomize_name('stored')
 
-            # random name
-            else:
-                name = randomize_name('stored')
-
-        # download references
+        # handle references
         if isinstance(value, NotebookReference):
-            value = await value.receive()
+            # handle local references (from same notebook)
+            if value.is_from(self):
+                return await value.copy(name)
 
-        # encode value and store
-        encoded_value = pickle.dumps(value)
+            # handle remote references (from other notebook)
+            else:
+                encoded_value = await value.receive(deserialize=False)
+
+        # handle any other values
+        else:
+            encoded_value = pickle.dumps(value)
+
+        # send to notebook
         await self.execute_code(f'''
             import pickle
             {name} = pickle.loads({encoded_value})
