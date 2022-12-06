@@ -1,8 +1,8 @@
-from asyncio import Lock
-from typing import List, Tuple, Union, Dict
+from typing import List, Tuple, Union, Dict, Callable, Awaitable
 
-from nbclient import NotebookClient
 from nbformat import NotebookNode
+
+from .NotebookError import NotebookError
 
 
 class NotebookCell:
@@ -11,15 +11,15 @@ class NotebookCell:
     # CELL_ERROR = Union[Tuple[str, str, List], None]
     CELL_EXECUTION_RESULT = Tuple[CELL_DATA, CELL_STREAM, CELL_STREAM, CELL_DATA]
 
-    def __init__(self, nb: NotebookNode, nc: NotebookClient, lock: Lock, idx: int):
+    def __init__(self, nb: NotebookNode, ce: Callable[["NotebookCell"], Awaitable], idx: int):
         self._nb: NotebookNode = nb
-        self._nc: NotebookClient = nc
-        self._lock: Lock = lock
-        self._idx: int = idx
+        self._ce: Callable[[NotebookCell], Awaitable] = ce
+        self.idx: int = idx
+        self.last_execution_result = None
 
     @property
-    def _cell(self) -> NotebookNode:
-        return self._nb.cells[self._idx]
+    def raw_cell(self) -> NotebookNode:
+        return self._nb.cells[self.idx]
 
     @property
     def type(self) -> str:
@@ -28,7 +28,7 @@ class NotebookCell:
 
         :return:
         """
-        return self._cell['cell_type']
+        return self.raw_cell['cell_type']
 
     @property
     def tags(self) -> List[str]:
@@ -37,10 +37,14 @@ class NotebookCell:
 
         :return:
         """
-        if 'tags' in self._cell['metadata']:
-            return self._cell['metadata']['tags']
+        if 'tags' in self.raw_cell['metadata']:
+            return self.raw_cell['metadata']['tags']
         else:
             return []
+
+    @property
+    def source(self) -> str:
+        return self.raw_cell['source']
 
     async def execute(self) -> "NotebookCell":
         """
@@ -48,9 +52,8 @@ class NotebookCell:
 
         :return: self
         """
-        async with self._lock:
-            await self._nc.async_execute_cell(cell=self._cell, cell_index=self._idx)
-            return self
+        self.last_execution_result = await self._ce(self)
+        return self
 
     def output(self) -> CELL_EXECUTION_RESULT:
         """
@@ -64,7 +67,7 @@ class NotebookCell:
         display_data: NotebookCell.CELL_DATA = []
         # error: CELL_ERROR = None
 
-        for o in self._cell['outputs']:
+        for o in self.raw_cell['outputs']:
             if o['output_type'] == 'execute_result':
                 for k, v in o['data'].items():
                     execute_result.append((k, v))
@@ -75,8 +78,8 @@ class NotebookCell:
             elif o['output_type'] == 'display_data':
                 for k, v in o['data'].items():
                     display_data.append((k, v))
-            # elif o['output_type'] == 'error':
-            #     error = o['ename'], o['evalue'], o['traceback']
+            elif o['output_type'] == 'error':
+                raise NotebookError(o['ename'], o['evalue'], o['traceback'])
             else:
                 raise AssertionError
 

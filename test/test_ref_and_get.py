@@ -1,12 +1,12 @@
 import pytest
 
-from jptest2.notebook import Notebook
+from jptest2.notebook import PythonNotebook
 
 
 @pytest.mark.asyncio
 async def test_ref():
-    async with Notebook('references.ipynb') as nb:
-        # create in notebook
+    async with PythonNotebook('references.ipynb') as nb:
+        # create in PythonNotebook
         await nb.execute_cells('create')
 
         # get references
@@ -22,7 +22,7 @@ async def test_ref():
         }
         assert await nb_swap(a, b).receive() == ('b', 'a')
 
-        # change in notebook
+        # change in PythonNotebook
         await nb.execute_cells('change')
 
         # compare references
@@ -37,8 +37,8 @@ async def test_ref():
 
 @pytest.mark.asyncio
 async def test_get():
-    async with Notebook('references.ipynb') as nb:
-        # create in notebook
+    async with PythonNotebook('references.ipynb') as nb:
+        # create in PythonNotebook
         await nb.execute_cells('create')
 
         # get references
@@ -54,7 +54,7 @@ async def test_get():
         }
         assert await nb_swap(a, b).receive() == ('b', 'a')
 
-        # change in notebook
+        # change in PythonNotebook
         await nb.execute_cells('change')
 
         # compare references

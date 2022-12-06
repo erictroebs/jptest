@@ -3,7 +3,7 @@ from os import PathLike
 from typing import Union, List, Optional
 
 from .JPTest import JPTest, EXECUTE_TYPE
-from .notebook import Notebook
+from .notebook import PythonNotebook
 
 
 class JPTestComparison(JPTest):
@@ -21,7 +21,7 @@ class JPTestComparison(JPTest):
         self._hold_left: Optional[Union[str, List[str]]] = hold_left
         self._hold_right: Optional[Union[str, List[str]]] = hold_right
 
-    async def __prepare(self, nb: Notebook, prepare: EXECUTE_TYPE, execute: EXECUTE_TYPE, hold: List[str]):
+    async def __prepare(self, nb: PythonNotebook, prepare: EXECUTE_TYPE, execute: EXECUTE_TYPE, hold: List[str]):
         await self._execute_recursively(nb, prepare)
         await self._execute_recursively(nb, execute)
 
@@ -32,8 +32,8 @@ class JPTestComparison(JPTest):
 
     async def execute(self, notebook: Union[str, PathLike]):
         async with \
-                Notebook(notebook) as left, \
-                Notebook(notebook) as right:
+                self._start(notebook) as left, \
+                self._start(notebook) as right:
             # hold
             hold_left = self._hold_left if isinstance(self._hold_left, list) else [self._hold_left]
             hold_right = self._hold_right if isinstance(self._hold_right, list) else [self._hold_right]

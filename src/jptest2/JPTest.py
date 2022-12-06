@@ -1,9 +1,11 @@
 import asyncio
 from os import PathLike
 from types import FunctionType
-from typing import Protocol, Union, AsyncIterable, List, Awaitable, AsyncGenerator, Tuple, Callable, Iterable
+from typing import Protocol, Union, AsyncIterable, List, Awaitable, AsyncGenerator, Tuple, Callable, Iterable, Optional
 
-from .notebook import Notebook
+import aiofiles
+
+from .notebook import Notebook, DuckDBNotebook, SQLiteNotebook, PythonNotebook
 
 
 class JPTestFunction(Protocol):
@@ -15,6 +17,7 @@ EXECUTE_TYPE = Union[Tuple[str],
                      Tuple[str, str],
                      str,
                      Callable,
+                     PathLike,
                      List['EXECUTE_TYPE']]
 
 
@@ -26,7 +29,8 @@ class JPTest:
     DEFAULT_TIMEOUT = 120
 
     def __init__(self, name: str = None, max_score: Union[float, int] = 0, timeout: int = None,
-                 execute: EXECUTE_TYPE = None, prepare_second: bool = False):
+                 execute: EXECUTE_TYPE = None, prepare_second: bool = False,
+                 kernel: Optional[str] = 'python3'):
         """
         :param name: name used in the output
         :param max_score: maximum score (can be exceeded, used to calculate total score)
@@ -39,6 +43,7 @@ class JPTest:
         self.max_score: float = float(max_score)
         self.timeout: int = timeout or JPTest.DEFAULT_TIMEOUT
         self.prepare_second: bool = prepare_second
+        self.kernel = kernel
 
         self._fun: JPTestFunction
         self._execute = execute
@@ -50,6 +55,16 @@ class JPTest:
     @property
     def test_name(self) -> str:
         return self._fun.__name__
+
+    def _start(self, notebook: Union[str, PathLike]):
+        if self.kernel == 'python3':
+            return PythonNotebook(notebook, timeout=self.timeout)
+        if self.kernel == 'duckdb':
+            return DuckDBNotebook(notebook)
+        if self.kernel == 'sqlite':
+            return SQLiteNotebook(notebook)
+
+        raise AssertionError(f'kernel {self.kernel} not supported')
 
     @staticmethod
     async def _execute_recursively(nb: Notebook, item: EXECUTE_TYPE):
@@ -76,6 +91,13 @@ class JPTest:
         elif isinstance(item, FunctionType):
             await nb.execute_fun(item)
 
+        # pathlike
+        elif isinstance(item, PathLike):
+            async with aiofiles.open(item, 'r') as file:
+                file_contents = await file.read()
+
+            await nb.execute_code(file_contents)
+
         # list
         elif isinstance(item, list):
             for i in item:
@@ -101,7 +123,7 @@ class JPTest:
                 elif len(value) == 4:
                     val, score, neg_comment, pos_comment = value
                 else:
-                    raise ValueError('invalid yield from test')
+                    raise ValueError(f'invalid yield from test {self.name}')
 
                 if (not isinstance(val, Iterable) and val) or (isinstance(val, Iterable) and all(val)):
                     test_score += score
@@ -119,7 +141,7 @@ class JPTest:
     async def execute(self, notebook: Union[str, PathLike]):
         try:
             if not self.prepare_second:
-                async with Notebook(notebook) as nb:
+                async with self._start(notebook) as nb:
                     if self._execute is not None:
                         await self._execute_recursively(nb, self._execute)
 
@@ -128,8 +150,8 @@ class JPTest:
 
             else:
                 async with \
-                        Notebook(notebook) as left, \
-                        Notebook(notebook) as right:
+                        self._start(notebook) as left, \
+                        self._start(notebook) as right:
                     if self._execute is not None:
                         await asyncio.gather(*[
                             self._execute_recursively(left, self._execute),
@@ -138,5 +160,6 @@ class JPTest:
 
                     fun = self._fun(left, right)
                     return *(await self._execute_fun(fun)), None
+
         except Exception as e:
             return 0, [str(e)], e

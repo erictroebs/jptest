@@ -1,3 +1,6 @@
 jupyter
+aiofiles
+aiosqlite
+duckdb
 pytest
 pytest-asyncio

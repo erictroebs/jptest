@@ -1,11 +1,11 @@
 import pytest
 
-from jptest2.notebook import Notebook
+from jptest2.notebook import PythonNotebook
 
 
 @pytest.mark.asyncio
 async def test_track_function():
-    async with Notebook('functions.ipynb') as nb:
+    async with PythonNotebook('functions.ipynb') as nb:
         # execute function definition
         await nb.execute_cells('definition')
 
@@ -120,7 +120,7 @@ async def test_track_function():
 
 @pytest.mark.asyncio
 async def test_multiple():
-    async with Notebook('functions.ipynb') as nb:
+    async with PythonNotebook('functions.ipynb') as nb:
         # execute function definition
         await nb.execute_cells('definition')
 
@@ -145,7 +145,7 @@ async def test_multiple():
 
 @pytest.mark.asyncio
 async def test_filter():
-    async with Notebook('functions.ipynb') as nb:
+    async with PythonNotebook('functions.ipynb') as nb:
         # execute function definition
         await nb.execute_cells('definition')
 
@@ -184,7 +184,7 @@ async def test_filter():
 
 @pytest.mark.asyncio
 async def test_return_values_false():
-    async with Notebook('functions.ipynb') as nb:
+    async with PythonNotebook('functions.ipynb') as nb:
         # execute function definition
         await nb.execute_cells('definition')
 
@@ -207,7 +207,7 @@ async def test_return_values_false():
 
 @pytest.mark.asyncio
 async def test_clear():
-    async with Notebook('functions.ipynb') as nb:
+    async with PythonNotebook('functions.ipynb') as nb:
         # execute function definition
         await nb.execute_cells('definition')
 
@@ -228,7 +228,7 @@ async def test_clear():
 
 @pytest.mark.asyncio
 async def test_first_and_last_call():
-    async with Notebook('functions.ipynb') as nb:
+    async with PythonNotebook('functions.ipynb') as nb:
         # execute function definition
         await nb.execute_cells('definition')
 
@@ -262,7 +262,7 @@ async def test_first_and_last_call():
 
 @pytest.mark.asyncio
 async def test_ctx_exit():
-    async with Notebook('functions.ipynb') as nb:
+    async with PythonNotebook('functions.ipynb') as nb:
         # execute function definition
         await nb.execute_cells('definition')
 

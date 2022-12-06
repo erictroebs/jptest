@@ -1,6 +1,6 @@
 import pytest
 
-from jptest2.notebook import Notebook
+from jptest2.notebook import PythonNotebook
 
 
 @pytest.mark.asyncio
@@ -12,7 +12,7 @@ async def test_execute_function():
         return fun_value + 1
         return fun_value + 10
 
-    async with Notebook('execute_code.ipynb') as nb:
+    async with PythonNotebook('execute_code.ipynb') as nb:
         result = await nb.execute_fun(my_fun)
         assert result.output() == (
             [('text/plain', '2')],
@@ -37,7 +37,7 @@ async def test_execute_function():
             return fun_value
             return fun_value + 10
 
-    async with Notebook('execute_code.ipynb') as nb:
+    async with PythonNotebook('execute_code.ipynb') as nb:
         result = await nb.execute_fun(my_second_fun)
         assert result.output() == (
             [],
@@ -59,7 +59,7 @@ async def test_execute_inner_function():
         inner_val = inner_fun()
         return inner_val + 2
 
-    async with Notebook('execute_code.ipynb') as nb:
+    async with PythonNotebook('execute_code.ipynb') as nb:
         result = await nb.execute_fun(outer_fun)
         assert result.output() == (
             [('text/plain', '4')],
@@ -76,7 +76,7 @@ async def test_inject_function():
     def my_fun():
         return 'abc', 1, 'def'
 
-    async with Notebook('execute_code.ipynb') as nb:
+    async with PythonNotebook('execute_code.ipynb') as nb:
         nb_fun = await nb.inject_fun(my_fun)
         result = await nb_fun().receive()
 
@@ -87,7 +87,7 @@ async def test_inject_function():
 async def test_inject_lambda_function():
     my_lambda = lambda x: x * x
 
-    async with Notebook('execute_code.ipynb') as nb:
+    async with PythonNotebook('execute_code.ipynb') as nb:
         nb_fun = await nb.inject_fun(my_lambda)
         result = await nb_fun(12).receive()
 

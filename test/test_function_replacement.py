@@ -1,6 +1,6 @@
 import pytest
 
-from jptest2.notebook import Notebook
+from jptest2.notebook import PythonNotebook
 
 
 @pytest.mark.asyncio
@@ -8,7 +8,7 @@ async def test_replace_function():
     def local_fun(_, b):
         return b
 
-    async with Notebook('functions.ipynb') as nb:
+    async with PythonNotebook('functions.ipynb') as nb:
         # execute cell with function definition
         await nb.execute_cells('definition')
 
@@ -40,7 +40,7 @@ async def test_replace_module_function():
     def local_fun(*args, **kwargs):
         return 1, 2, 3
 
-    async with Notebook('functions.ipynb') as nb:
+    async with PythonNotebook('functions.ipynb') as nb:
         # import module
         await nb.execute_code('''
             import math
@@ -58,7 +58,7 @@ async def test_replace_class_function():
     def local_fun(*args, **kwargs):
         return 1, 2, 3
 
-    async with Notebook('functions.ipynb') as nb:
+    async with PythonNotebook('functions.ipynb') as nb:
         # inject class
         await nb.execute_code('''
             class Test:
@@ -80,7 +80,7 @@ async def test_replace_object_function():
     def local_fun(*args, **kwargs):
         return 1, 2, 3
 
-    async with Notebook('functions.ipynb') as nb:
+    async with PythonNotebook('functions.ipynb') as nb:
         # inject class
         await nb.execute_code('''
             class Test:

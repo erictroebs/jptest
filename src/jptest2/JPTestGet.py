@@ -3,7 +3,6 @@ from os import PathLike
 from typing import Union, List
 
 from .JPTest import JPTest, EXECUTE_TYPE
-from .notebook import Notebook
 
 
 class JPTestGet(JPTest):
@@ -17,7 +16,7 @@ class JPTestGet(JPTest):
         self._get: List[str] = get if isinstance(get, list) else [get]
 
     async def execute(self, notebook: Union[str, PathLike]):
-        async with Notebook(notebook) as nb:
+        async with self._start(notebook) as nb:
             try:
                 if self._execute is not None:
                     await self._execute_recursively(nb, self._execute)

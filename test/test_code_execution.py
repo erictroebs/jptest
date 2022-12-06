@@ -3,7 +3,7 @@ import base64
 import pytest
 from nbclient.exceptions import CellExecutionError
 
-from jptest2.notebook import Notebook
+from jptest2.notebook import PythonNotebook
 
 
 def read_image(path: str) -> str:
@@ -16,7 +16,7 @@ def read_image(path: str) -> str:
 
 @pytest.mark.asyncio
 async def test_execute_code():
-    async with Notebook('execute_code.ipynb') as nb:
+    async with PythonNotebook('execute_code.ipynb') as nb:
         # execute result
         exec, out, err, dsp = (await nb.execute_code('''
             1 + 1
@@ -89,8 +89,8 @@ async def test_execute_code():
 @pytest.mark.asyncio
 async def test_store():
     async with \
-            Notebook('execute_code.ipynb') as nb, \
-            Notebook('execute_code.ipynb') as nb2:
+            PythonNotebook('execute_code.ipynb') as nb, \
+            PythonNotebook('execute_code.ipynb') as nb2:
         # store
         val = {
             'a': 1,
@@ -124,7 +124,7 @@ async def test_store():
 
 @pytest.mark.asyncio
 async def test_execute_all_cells():
-    async with Notebook('execute_code.ipynb') as nb:
+    async with PythonNotebook('execute_code.ipynb') as nb:
         cells = await nb.execute_cells()
         assert len(cells) == 10
 
@@ -184,7 +184,7 @@ async def test_execute_all_cells():
 
 @pytest.mark.asyncio
 async def test_execute_cells_by_tag():
-    async with Notebook('execute_code.ipynb') as nb:
+    async with PythonNotebook('execute_code.ipynb') as nb:
         # only cells with tag 'task-1'
         cells = await nb.execute_cells('task-1')
         assert len(cells) == 2
@@ -229,7 +229,7 @@ async def test_execute_cells_by_tag():
 
 @pytest.mark.asyncio
 async def test_execute_cells_from_to():
-    async with Notebook('execute_code.ipynb') as nb:
+    async with PythonNotebook('execute_code.ipynb') as nb:
         cells = await nb.execute_cells(from_tag='task-2', to_tag='task-4')
         assert len(cells) == 5
 
@@ -265,7 +265,7 @@ async def test_execute_cells_from_to():
 
 @pytest.mark.asyncio
 async def test_execute_cells_mixed():
-    async with Notebook('execute_code.ipynb') as nb:
+    async with PythonNotebook('execute_code.ipynb') as nb:
         cells = await nb.execute_cells('task-2', 'task-3', from_tag='task-2', to_tag='task-4')
         assert len(cells) == 3
 

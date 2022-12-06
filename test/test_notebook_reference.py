@@ -2,12 +2,12 @@ import asyncio
 
 import pytest
 
-from jptest2.notebook import Notebook
+from jptest2.notebook import PythonNotebook
 
 
 @pytest.mark.asyncio
 async def test_receive():
-    async with Notebook('references.ipynb') as nb:
+    async with PythonNotebook('references.ipynb') as nb:
         await nb.execute_cells('primitives', 'objects')
 
         nb_int = await nb.ref('nb_int').receive()
@@ -44,7 +44,7 @@ async def test_receive():
 @pytest.mark.asyncio
 async def test_reference_call():
     # receive
-    async with Notebook('references.ipynb') as nb:
+    async with PythonNotebook('references.ipynb') as nb:
         await nb.execute_cells('create', 'objects')
 
         nb_fun = nb.ref('nb_swap')
@@ -54,7 +54,7 @@ async def test_reference_call():
         lo_b = await nb_b.receive()
         lo_c = await nb_c.receive()
 
-        # args: call with notebook parameters
+        # args: call with PythonNotebook parameters
         result = await nb_fun(nb_a, nb_c).receive()
         assert result == (lo_c, lo_a)
 
@@ -66,7 +66,7 @@ async def test_reference_call():
         result = await nb_fun(nb_a, lo_c).receive()
         assert result == (lo_c, lo_a)
 
-        # kwargs: call with notebook parameter
+        # kwargs: call with PythonNotebook parameter
         result = await nb_fun(nb_a, nb_c, replace_second=nb_b).receive()
         assert result == (lo_b, lo_a)
 
@@ -75,14 +75,14 @@ async def test_reference_call():
         assert result == (lo_b, lo_a)
 
     # execute
-    async with Notebook('references.ipynb') as nb:
+    async with PythonNotebook('references.ipynb') as nb:
         await nb.execute_cells('create', 'objects')
 
         nb_fun = nb.ref('nb_swap')
         nb_a, nb_b, nb_c = nb.refs('a', 'b', 'c')
         lo_a, lo_b, lo_c = 1, 2, 3
 
-        # args: call with notebook parameters
+        # args: call with PythonNotebook parameters
         await nb_fun(nb_a, nb_c).execute()
 
         # args: call with local parameters
@@ -91,7 +91,7 @@ async def test_reference_call():
         # args: call with mixed parameters
         await nb_fun(nb_a, lo_c).execute()
 
-        # kwargs: call with notebook parameter
+        # kwargs: call with PythonNotebook parameter
         await nb_fun(nb_a, nb_c, replace_second=nb_b).execute()
 
         # kwargs: call with local parameter
@@ -100,7 +100,7 @@ async def test_reference_call():
 
 @pytest.mark.asyncio
 async def test_item_and_attr():
-    async with Notebook('references.ipynb') as nb:
+    async with PythonNotebook('references.ipynb') as nb:
         await nb.execute_cells('objects')
 
         # item
@@ -118,7 +118,7 @@ async def test_item_and_attr():
 
 @pytest.mark.asyncio
 async def test_len():
-    async with Notebook('references.ipynb') as nb:
+    async with PythonNotebook('references.ipynb') as nb:
         await nb.execute_cells('objects')
 
         nb_list_len = await nb.ref('nb_list').len()
@@ -127,7 +127,7 @@ async def test_len():
 
 @pytest.mark.asyncio
 async def test_copy():
-    async with Notebook('references.ipynb') as nb:
+    async with PythonNotebook('references.ipynb') as nb:
         await nb.execute_cells('objects')
 
         # simple name
@@ -154,8 +154,8 @@ async def test_copy():
 @pytest.mark.asyncio
 async def test_transfer_between_notebooks():
     async with \
-            Notebook('references.ipynb') as nb1, \
-            Notebook('references.ipynb') as nb2:
+            PythonNotebook('references.ipynb') as nb1, \
+            PythonNotebook('references.ipynb') as nb2:
         await asyncio.gather(
             nb1.execute_cells('create', 'primitives'),
             nb2.execute_cells('objects')
