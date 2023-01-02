@@ -1,30 +1,23 @@
+import argparse
 import asyncio
 import importlib.util
 import json
+import os
 import sys
 from argparse import ArgumentParser
 from asyncio import Semaphore
 
+from watchfiles import awatch
+
 from jptest2 import JPTest, JPSetup, JPTeardown
 
 
-async def main():
-    # configure argument parser
-    parser = ArgumentParser()
-    parser.add_argument('nb_file', help='notebook file (.ipynb) to load')
-    parser.add_argument('test_file', help='test file (.py) to load', nargs='?')
-    parser.add_argument('test_name', help='test to execute (all if None given)', nargs='?')
-    parser.add_argument('--json', action='store_true', help='print output as json (default)', default=True)
-    parser.add_argument('--tests', type=int, help='number of tests to process concurrently', default=1000)
-    parser.add_argument('--md', action='store_true', help='print output as markdown')
-    parser.add_argument('--timeout', type=int, help='override default timeout in seconds (default 120s)', default=120)
-    parser.add_argument('--quiet', action='store_true', help='only print exceptions')
-    parser.add_argument('--verbose', '-v', action='store_true', help='print verbosely to stderr')
-
-    args = parser.parse_args()
-
+async def test(args: argparse.Namespace):
     # override default timeout
     JPTest.DEFAULT_TIMEOUT = args.timeout
+
+    # reset registered tests
+    JPTest.TESTS = []
 
     # load classes from file
     if args.test_file is not None:
@@ -102,6 +95,37 @@ async def main():
             })
 
         print(json.dumps(result, indent=4))
+
+
+async def main():
+    # configure argument parser
+    parser = ArgumentParser()
+    parser.add_argument('nb_file', help='notebook file (.ipynb) to load')
+    parser.add_argument('test_file', help='test file (.py) to load', nargs='?')
+    parser.add_argument('test_name', help='test to execute (all if None given)', nargs='?')
+    parser.add_argument('--json', action='store_true', help='print output as json (default)', default=True)
+    parser.add_argument('--tests', type=int, help='number of tests to process concurrently', default=1000)
+    parser.add_argument('--md', action='store_true', help='print output as markdown')
+    parser.add_argument('--timeout', type=int, help='override default timeout in seconds (default 120s)', default=120)
+    parser.add_argument('--quiet', action='store_true', help='only print exceptions')
+    parser.add_argument('--verbose', '-v', action='store_true', help='print verbosely to stderr')
+    parser.add_argument('--live', action='store_true', help='run infinitely and watch for changes')
+
+    args = parser.parse_args()
+
+    # default mode
+    if not args.live:
+        await test(args)
+
+    # live mode
+    else:
+        os.system('clear')
+        await test(args)
+
+        async for changes in awatch(args.nb_file, args.test_file):
+            print(changes)
+            os.system('clear')
+            await test(args)
 
 
 if __name__ == '__main__':
