@@ -75,6 +75,8 @@ Please note the test function is an `async` function!
 - [Output Formats](#output-formats)
 - [Parallelization](#parallelization)
 - [Running Without Tests](#running-without-tests)
+- [Live Preview](#live-preview)
+- [Other Kernels](#other-kernels)
 
 ## Contexts and Processes
 
@@ -256,7 +258,7 @@ as described before or passed as a parameter to another function.
 
 ```python
 def fun(i: int):
-  return i + 1
+    return i + 1
 
 
 injected = await nb.inject_fun(fun)
@@ -274,7 +276,7 @@ although it is later executed in the notebook context.
 
 ```python
 def fun(i: int):
-  k = i + 1
+    k = i + 1
 
 
 # `i` has to be available in the notebook context!
@@ -367,3 +369,20 @@ order, does not score and passes exceptions. This can be used to check notebooks
 libraries are missing within an image or if data sets have not been shipped.
 
 Use the command line parameter `--quiet` to suppress any output other than exceptions and stacktraces.
+
+## Live Preview
+
+The live preview is activated with the `--live` switch. It monitors changes to the given files and automatically reruns
+the evaluation as soon as one of them is modified. This mode is useful for developing tests or for demonstrations.
+
+Install the package `jptest2[demo]` to receive the optional dependencies. The `clear` command is used to clear the
+terminal window and therefore must be available.
+
+## Other Kernels
+
+While the main focus is on Python notebooks, development to support other kernels is possible. Set the `kernel`
+parameter to specify which language is used in the notebook. Besides Python3, two databases are supported at the moment.
+However, they do not start an actual Jupyter Kernel but send the queries directly to a connected database.
+
+1. **SQLite** using `jptest2[sqlite]`
+2. **DuckDB** using `jptest2[duckdb]`

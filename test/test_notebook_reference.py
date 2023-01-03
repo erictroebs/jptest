@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from jptest2.notebook import PythonNotebook
+from jptest2 import PythonNotebook
 
 
 @pytest.mark.asyncio

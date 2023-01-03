@@ -1,3 +1,11 @@
 from .DuckDBNotebook import DuckDBNotebook
-from .PythonNotebook import PythonNotebook
-from .SQLiteNotebook import SQLiteNotebook
+
+try:
+    from .PythonNotebook import PythonNotebook
+except:
+    pass
+
+try:
+    from .SQLiteNotebook import SQLiteNotebook
+except:
+    pass

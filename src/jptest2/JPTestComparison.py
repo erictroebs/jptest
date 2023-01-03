@@ -3,7 +3,7 @@ from os import PathLike
 from typing import Union, List, Optional
 
 from .JPTest import JPTest, EXECUTE_TYPE
-from .notebook import PythonNotebook
+from .notebook.kernels import PythonNotebook
 
 
 class JPTestComparison(JPTest):

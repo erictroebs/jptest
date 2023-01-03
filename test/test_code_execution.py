@@ -3,7 +3,7 @@ import base64
 import pytest
 from nbclient.exceptions import CellExecutionError
 
-from jptest2.notebook import PythonNotebook
+from jptest2 import PythonNotebook
 
 
 def read_image(path: str) -> str:

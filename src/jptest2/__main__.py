@@ -7,8 +7,6 @@ import sys
 from argparse import ArgumentParser
 from asyncio import Semaphore
 
-from watchfiles import awatch
-
 from jptest2 import JPTest, JPSetup, JPTeardown
 
 
@@ -119,6 +117,8 @@ async def main():
 
     # live mode
     else:
+        from watchfiles import awatch
+
         os.system('clear')
         await test(args)
 

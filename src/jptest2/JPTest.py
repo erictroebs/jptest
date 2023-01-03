@@ -5,7 +5,7 @@ from typing import Protocol, Union, AsyncIterable, List, Awaitable, AsyncGenerat
 
 import aiofiles
 
-from .notebook import Notebook, DuckDBNotebook, SQLiteNotebook, PythonNotebook
+from .notebook import Notebook
 
 
 class JPTestFunction(Protocol):
@@ -58,10 +58,13 @@ class JPTest:
 
     def _start(self, notebook: Union[str, PathLike]):
         if self.kernel == 'python3':
+            from .notebook.kernels import PythonNotebook
             return PythonNotebook(notebook, timeout=self.timeout)
         if self.kernel == 'duckdb':
+            from .notebook.kernels import DuckDBNotebook
             return DuckDBNotebook(notebook)
         if self.kernel == 'sqlite':
+            from .notebook.kernels import SQLiteNotebook
             return SQLiteNotebook(notebook)
 
         raise AssertionError(f'kernel {self.kernel} not supported')
