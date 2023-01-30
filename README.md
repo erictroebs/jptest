@@ -84,7 +84,7 @@ JPTest manages different processes. The first process that is started collects a
 stores them together with their respecting test functions. Later, this process will control the startup of notebooks
 and take over the evaluation. We refer to this process as the test context.
 
-Jupyter uses kernels that are started in a separate process. JPTest only supports Python3 kernels and does not share
+Jupyter uses kernels that are started in a separate process. JPTest supports Python3 kernels and does not share
 them between tests, so for each test at least one independent kernel process is started to run the contents of the
 notebook. However, as we will see later, it is also possible to start multiple kernels per test. We refer to this set
 of processes as the notebook context.

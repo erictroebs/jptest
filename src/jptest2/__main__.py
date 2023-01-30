@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 import sys
+import traceback
 from argparse import ArgumentParser
 from asyncio import Semaphore
 
@@ -14,8 +15,10 @@ async def test(args: argparse.Namespace):
     # override default timeout
     JPTest.DEFAULT_TIMEOUT = args.timeout
 
-    # reset registered tests
+    # reset registered tests and other functions
     JPTest.TESTS = []
+    JPSetup.FN = []
+    JPTeardown.FN = []
 
     # load classes from file
     if args.test_file is not None:
@@ -123,9 +126,11 @@ async def main():
         await test(args)
 
         async for changes in awatch(args.nb_file, args.test_file):
-            print(changes)
             os.system('clear')
-            await test(args)
+            try:
+                await test(args)
+            except Exception as e:
+                traceback.print_exception(e)
 
 
 if __name__ == '__main__':

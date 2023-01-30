@@ -16,8 +16,8 @@ class JPTestComparison(JPTest):
                  hold_left: Union[str, List[str]] = None, hold_right: Union[str, List[str]] = None):
         super().__init__(name, max_score, timeout, prepare)
 
-        self._execute_left: EXECUTE_TYPE = execute_left
-        self._execute_right: EXECUTE_TYPE = execute_right
+        self._execute_left: EXECUTE_TYPE = execute_left if execute_left is not None else []
+        self._execute_right: EXECUTE_TYPE = execute_right if execute_right is not None else []
         self._hold_left: Optional[Union[str, List[str]]] = hold_left
         self._hold_right: Optional[Union[str, List[str]]] = hold_right
 

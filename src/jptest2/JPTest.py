@@ -46,7 +46,7 @@ class JPTest:
         self.kernel = kernel
 
         self._fun: JPTestFunction
-        self._execute = execute
+        self._execute = execute if execute is not None else []
 
     def __call__(self, fun: JPTestFunction):
         self._fun = fun
