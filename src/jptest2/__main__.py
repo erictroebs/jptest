@@ -56,7 +56,7 @@ async def test(args: argparse.Namespace):
                 acc[3] + [row[3]]
             ),
             rs,
-            (0., 0., [], [])
+            (0, 0, [], [])
         )
 
     results: List[Tuple[str, float, float, List[str], List[Exception]]] = await asyncio.gather(*[
