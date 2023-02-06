@@ -1,7 +1,8 @@
 import asyncio
 from os import PathLike
 from types import FunctionType
-from typing import Protocol, Union, AsyncIterable, List, Awaitable, AsyncGenerator, Tuple, Callable, Iterable, Optional
+from typing import Union, Optional, Protocol
+from typing import List, Tuple, Dict, Callable, AsyncIterable, Awaitable, AsyncGenerator, Iterable
 
 import aiofiles
 
@@ -25,7 +26,7 @@ class JPTest:
     """
     decorator to use with test functions
     """
-    TESTS: List['JPTest'] = []
+    TESTS: Dict[str, List['JPTest']] = {}
     DEFAULT_TIMEOUT = 120
 
     def __init__(self, name: str = None, max_score: Union[float, int] = 0, timeout: int = None,
@@ -39,7 +40,7 @@ class JPTest:
         :param prepare_second: create two notebooks and use `execute` with both in parallel
         """
 
-        self.name: str = name
+        self.name: Optional[str] = name
         self.max_score: float = float(max_score)
         self.timeout: int = timeout or JPTest.DEFAULT_TIMEOUT
         self.prepare_second: bool = prepare_second
@@ -49,11 +50,17 @@ class JPTest:
         self._execute = execute if execute is not None else []
 
     def __call__(self, fun: JPTestFunction):
-        self._fun = fun
-        self.TESTS.append(self)
+        self._fun: JPTestFunction = fun
+
+        if self.name not in self.TESTS:
+            self.TESTS[self.name] = []
+
+        self.TESTS[self.name].append(self)
+
+        return fun
 
     @property
-    def test_name(self) -> str:
+    def test_name(self) -> Optional[str]:
         return self._fun.__name__
 
     def _start(self, notebook: Union[str, PathLike]):
@@ -116,7 +123,17 @@ class JPTest:
 
         if isinstance(fun, AsyncGenerator):
             async for value in fun:
-                if len(value) == 2:
+                if not isinstance(value, tuple):
+                    val = True
+                    score = value
+                    pos_comment = None
+                    neg_comment = None
+                elif len(value) == 1:
+                    val = True
+                    score = value[0]
+                    pos_comment = None
+                    neg_comment = None
+                elif len(value) == 2:
                     val, score = value
                     pos_comment = None
                     neg_comment = None

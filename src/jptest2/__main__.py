@@ -7,6 +7,8 @@ import sys
 import traceback
 from argparse import ArgumentParser
 from asyncio import Semaphore
+from functools import reduce
+from typing import List, Tuple
 
 from jptest2 import JPTest, JPSetup, JPTeardown
 
@@ -16,7 +18,7 @@ async def test(args: argparse.Namespace):
     JPTest.DEFAULT_TIMEOUT = args.timeout
 
     # reset registered tests and other functions
-    JPTest.TESTS = []
+    JPTest.TESTS = {}
     JPSetup.FN = []
     JPTeardown.FN = []
 
@@ -40,12 +42,28 @@ async def test(args: argparse.Namespace):
     # filter and execute tests
     proc: Semaphore = Semaphore(args.tests)
 
-    async def ensure_proc(async_fun):
+    async def exec_test(test: JPTest):
         async with proc:
-            return await async_fun
+            return test.max_score, *await test.execute(args.nb_file)
 
-    tests = [t for t in JPTest.TESTS if args.test_name is None or args.test_name == t.test_name]
-    results = await asyncio.gather(*[ensure_proc(t.execute(args.nb_file)) for t in tests])
+    async def exec_list(name: str, tests: List[JPTest]):
+        rs = await asyncio.gather(*[exec_test(test) for test in tests])
+        return name, *reduce(
+            lambda acc, row: (
+                acc[0] + row[0],
+                acc[1] + row[1],
+                acc[2] + row[2],
+                acc[3] + [row[3]]
+            ),
+            rs,
+            (0., 0., [], [])
+        )
+
+    results: List[Tuple[str, float, float, List[str], List[Exception]]] = await asyncio.gather(*[
+        exec_list(name, tests)
+        for name, tests in JPTest.TESTS.items()
+        if args.test_name is None or args.test_name == name
+    ])
 
     # post run functions
     if args.verbose:
@@ -56,29 +74,30 @@ async def test(args: argparse.Namespace):
 
     # print output
     if args.quiet:  # quiet
-        for test, (score, comments, e) in zip(tests, results):
-            if e is not None:
-                raise e
+        for name, max_score, score, _, errors in results:
+            for e in errors:
+                if e is not None:
+                    raise e
 
-            if score != test.max_score:
-                raise AssertionError(f'test_name={test.test_name}, score={score}, max_score={test.max_score}')
+            if score != max_score:
+                raise AssertionError(f'name={name}, score={score}, max_score={max_score}')
 
     elif args.md:  # md
-        achieved = sum((score for score, _, _ in results))
-        total = sum((test.max_score for test in tests))
+        achieved = sum((score for _, _, score, _, _ in results))
+        total = sum((max_score for _, max_score, _, _, _ in results))
 
         print(f'# Bewertung ({achieved} / {total})')
         print()
 
-        for test, (score, comments, e) in zip(tests, results):
-            print(f'## {test.name} ({score} / {test.max_score})')
+        for name, max_score, score, comments, _ in results:
+            print(f'## {name} ({score} / {max_score})')
             for comment in comments:
                 print(f'- {comment}')
             print()
 
     else:  # json
-        achieved = sum((score for score, _, _ in results))
-        total = sum((test.max_score for test in tests))
+        achieved = sum((score for _, _, score, _, _ in results))
+        total = sum((max_score for _, max_score, _, _, _ in results))
 
         result = {
             'achievedScore': achieved,
@@ -86,12 +105,11 @@ async def test(args: argparse.Namespace):
             'tests': []
         }
 
-        for test, (score, comments, e) in zip(tests, results):
+        for name, max_score, score, comments, _ in results:
             result['tests'].append({
-                'test': test.test_name,
-                'name': test.name,
+                'name': name,
                 'achievedScore': score,
-                'totalScore': test.max_score,
+                'totalScore': max_score,
                 'comments': comments
             })
 
@@ -125,7 +143,7 @@ async def main():
         os.system('clear')
         await test(args)
 
-        async for changes in awatch(args.nb_file, args.test_file):
+        async for _ in awatch(args.nb_file, args.test_file):
             os.system('clear')
             try:
                 await test(args)

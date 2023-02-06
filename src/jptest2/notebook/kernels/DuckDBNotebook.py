@@ -2,7 +2,7 @@ import asyncio
 import re
 from concurrent.futures import ThreadPoolExecutor
 from os import PathLike
-from typing import Union, List
+from typing import Union, List, Tuple
 
 import duckdb
 
@@ -34,12 +34,12 @@ class DuckDBNotebook(Notebook):
         await super().__aexit__(exc_type, exc_val, exc_tb)
         self.db.__exit__(exc_type, exc_val, exc_tb)
 
-    def _execute_and_fetch(self, statement: str, fetch: bool) -> List:
+    def _execute_and_fetch(self, statement: str, fetch: bool) -> Tuple[List, List]:
         with self.db.cursor() as cursor:
             cursor.execute(statement)
 
             if fetch:
-                return cursor.fetchall()
+                return [c[0] for c in cursor.description], cursor.fetchall()
 
     async def __execute_cell(self, cell: NotebookCell):
         statements = list(filter(lambda x: x.strip(), re.split(r';$', cell.source, flags=re.MULTILINE)))
