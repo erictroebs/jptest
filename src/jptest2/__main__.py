@@ -140,15 +140,18 @@ async def main():
     else:
         from watchfiles import awatch
 
-        os.system('clear')
-        await test(args)
-
-        async for _ in awatch(args.nb_file, args.test_file):
+        async def live_test():
             os.system('clear')
+
             try:
                 await test(args)
             except Exception as e:
                 traceback.print_exception(e)
+
+        await live_test()
+
+        async for _ in awatch(args.nb_file, args.test_file):
+            await live_test()
 
 
 if __name__ == '__main__':
