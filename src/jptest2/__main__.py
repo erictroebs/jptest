@@ -83,14 +83,21 @@ async def test(args: argparse.Namespace):
                 raise AssertionError(f'name={name}, score={score}, max_score={max_score}')
 
     elif args.md:  # md
-        achieved = sum((score for _, _, score, _, _ in results))
-        total = sum((max_score for _, max_score, _, _, _ in results))
+        skip_total = (len(results) == 1)
 
-        print(f'# Bewertung ({achieved} / {total})')
-        print()
+        if not skip_total:
+            achieved = sum((score for _, _, score, _, _ in results))
+            total = sum((max_score for _, max_score, _, _, _ in results))
+
+            print(f'# Bewertung ({achieved} / {total})')
+            print()
+
+            headline = '##'
+        else:
+            headline = '#'
 
         for name, max_score, score, comments, _ in results:
-            print(f'## {name} ({score} / {max_score})')
+            print(f'{headline} {name} ({score} / {max_score})')
             for comment in comments:
                 print(f'- {comment}')
             print()
