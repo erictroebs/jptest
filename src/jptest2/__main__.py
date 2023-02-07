@@ -52,7 +52,7 @@ async def test(args: argparse.Namespace):
             lambda acc, row: (
                 acc[0] + row[0],
                 acc[1] + row[1],
-                acc[2] + row[2],
+                acc[2] + list(set(row[2]) - set(acc[2])),
                 acc[3] + [row[3]]
             ),
             rs,
