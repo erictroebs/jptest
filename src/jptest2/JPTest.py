@@ -1,12 +1,13 @@
 import asyncio
 from os import PathLike
 from types import FunctionType
-from typing import Union, Optional, Protocol
 from typing import List, Tuple, Dict, Callable, AsyncIterable, Awaitable, AsyncGenerator, Iterable
+from typing import Union, Optional, Protocol
 
 import aiofiles
 
 from .notebook import Notebook
+from .notebook.kernels import *
 
 
 class JPTestFunction(Protocol):
@@ -14,12 +15,7 @@ class JPTestFunction(Protocol):
         ...
 
 
-EXECUTE_TYPE = Union[Tuple[str],
-                     Tuple[str, str],
-                     str,
-                     Callable,
-                     PathLike,
-                     List['EXECUTE_TYPE']]
+EXECUTE_TYPE = Union[Tuple[str], Tuple[str, str], str, Callable, PathLike, List['EXECUTE_TYPE']]
 
 
 class JPTest:
@@ -65,13 +61,10 @@ class JPTest:
 
     def _start(self, notebook: Union[str, PathLike]):
         if self.kernel == 'python3':
-            from .notebook.kernels import PythonNotebook
             return PythonNotebook(notebook, timeout=self.timeout)
         if self.kernel == 'duckdb':
-            from .notebook.kernels import DuckDBNotebook
             return DuckDBNotebook(notebook)
         if self.kernel == 'sqlite':
-            from .notebook.kernels import SQLiteNotebook
             return SQLiteNotebook(notebook)
 
         raise AssertionError(f'kernel {self.kernel} not supported')

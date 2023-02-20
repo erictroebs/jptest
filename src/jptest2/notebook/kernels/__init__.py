@@ -1,7 +1,7 @@
-from .DuckDBNotebook import DuckDBNotebook
+from .PythonNotebook import PythonNotebook
 
 try:
-    from .PythonNotebook import PythonNotebook
+    from .DuckDBNotebook import DuckDBNotebook
 except:
     pass
 
