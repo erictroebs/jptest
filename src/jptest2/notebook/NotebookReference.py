@@ -110,6 +110,9 @@ class NotebookReference:
 
             return value
 
+    def __await__(self):
+        return self.receive().__await__()
+
     @staticmethod
     async def receive_many(*references: "NotebookReference"):
         return await asyncio.gather(*[ref.receive() for ref in references])
