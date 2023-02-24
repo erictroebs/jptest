@@ -173,6 +173,9 @@ class NotebookFunctionWrapper:
             await self._wrapper.calls.receive()
         ))
 
+    def __await__(self):
+        return self.receive().__await__()
+
     async def receive_first(self) -> Optional[NotebookFunctionCall]:
         """
         receive the first call made (if any)

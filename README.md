@@ -28,6 +28,7 @@ simple test could look like the following example:
 
 ```python
 from jptest2 import *
+import asyncio
 
 
 # Create test with name "Task 1" and a maximum score of 1.
@@ -39,7 +40,7 @@ async def test_task1(nb: Notebook):
     fib_fun_in_nb = nb.ref('fibonacci')
 
     # Receive five results from the fibonacci function.
-    result = await NotebookReference.receive_many(
+    result = await asyncio.gather(
         fib_fun_in_nb(1),
         fib_fun_in_nb(2),
         fib_fun_in_nb(3),
@@ -167,6 +168,7 @@ notebook context and may be used for interaction in various ways:
 
 - `receive` serializes the referenced object and transfers it from the notebook context to the test context. `execute`,
   on the other hand, executes a statement without processing the result and transferring it to the test context.
+- Calling `await` on a `NotebookReference` object directly triggers a call to `receive`.
 - Access to an object's attributes or items is possible with the usual syntax. Note that the result is not evaluated
   immediately and thus errors due to missing attributes or keys are carried over until the actual execution.
 - References may be called like functions. The parameters are either other references, then these are resolved within
@@ -183,11 +185,14 @@ my_dict_in_nb = nb.my_dict
 val_of_x = my_dict_in_nb['x']
 
 # Raises an exception if `my_fun` does not exist
-# or raises an exception itself.
+# or if it raises an exception itself.
 print(await my_fun_return.receive())
 
+# You can omit the call to `receive`.
+print(await my_fun_return)
+
 # Raises an exception if `my_dict` does not `x` is not a key in `my_dict`.
-print(await val_of_x.receive())
+print(await val_of_x)
 ```
 
 Pickle is used to serialize and deserialize objects. Therefore, it is also possible to transfer more complex objects
@@ -262,7 +267,7 @@ def fun(i: int):
 
 
 injected = await nb.inject_fun(fun)
-result = await injected(5).receive()
+result = await injected(5)
 
 # `result` equals `6`.
 ```
@@ -307,7 +312,7 @@ def replacement():
 
 async with nb.replace_fun('my_fun', replacement):
     # executes `replacement` in notebook context.
-    result = await nb.ref('my_fun')().receive()
+    result = await nb.ref('my_fun')()
     # prints `2`
     print(result)
 ```
@@ -326,7 +331,7 @@ await nb.execute_code('''
 async with nb.track_fun('fib') as calls:
     await nb.ref('fib')(15).execute()
 
-print(len(await calls.receive()) > 1000)
+print(len(await calls) > 1000)
 ```
 
 ## Setup and Teardown Methods

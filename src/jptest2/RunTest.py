@@ -6,17 +6,12 @@ async def run(nb: Notebook):
     # iterate over cells
     for cell in nb.cells:
         # find `jp:input` tag
-        replace_input = None
+        if 'jp:input' in cell.tags:
+            # replace input function
+            def replacement(arg):
+                return arg
 
-        for tag in cell.tags:
-            if tag.startswith('jp:input='):
-                replace_input = tag[9:]
-
-        # replace input function if necessary
-        if replace_input is not None:
-            def replacement(_):
-                return replace_input
-
+            # execute cell
             async with nb.replace_fun('input', replacement):
                 await cell.execute()
 
